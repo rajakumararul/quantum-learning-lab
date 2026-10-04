@@ -1,1 +1,127 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101827"><meta name="description" content="Interactive single-qubit Bloch sphere educational simulator"><title>Quantum Learning Lab | Bloch Sphere</title><link rel="stylesheet" href="styles.css"></head><body><header><div class="logo">◉ <strong>Quantum Learning Lab</strong></div><span class="eyebrow">Single-qubit laboratory · v0.1</span></header><main><section class="intro"><span class="eyebrow">INTERACTIVE LEARNING</span><h1>Explore a qubit, one gate at a time.</h1><p>Apply quantum gates, rotate the state, and observe the Bloch vector, amplitudes, and measurement probabilities update together.</p></section><div class="layout"><section class="panel stage"><div class="panelhead"><h2>Bloch sphere</h2><span id="angles">θ = 0° · φ = 0°</span></div><canvas id="sphere" width="720" height="560" role="img" aria-label="Bloch sphere with coordinate axes and a quantum state vector"></canvas><p class="hint">Drag to orbit the visualization. The orientation does not change the quantum state.</p><div class="sliders"><label>Polar angle θ <strong id="thetaVal">0°</strong><input id="theta" aria-label="Polar angle theta" type="range" min="0" max="180" step="1" value="0"></label><label>Azimuth angle φ <strong id="phiVal">0°</strong><input id="phi" aria-label="Azimuthal angle phi" type="range" min="0" max="360" step="1" value="0"></label></div></section><aside class="right"><section class="panel"><div class="panelhead"><h2>Quantum gates</h2><button id="reset" class="secondary">↺ Reset |0⟩</button></div><div class="gates" id="gates"></div><p id="gateInfo" class="explanation">Start in |0⟩. Apply H to create an equal superposition.</p></section><section class="panel"><h2>State vector</h2><div class="equation" id="stateEquation" aria-live="polite"></div><div class="metrics"><div><small>α amplitude</small><strong id="alpha"></strong></div><div><small>β amplitude</small><strong id="beta"></strong></div></div><p class="footnote">Global phase is ignored when displaying the canonical state vector.</p></section><section class="panel"><h2>Measurement probabilities</h2><div class="measure-title"><span>|0⟩</span><strong id="p0">100%</strong></div><div class="track"><div class="fill zero" id="bar0" style="width:100%"></div></div><div class="measure-title"><span>|1⟩</span><strong id="p1">0%</strong></div><div class="track"><div class="fill one" id="bar1" style="width:0%"></div></div><button class="measure" id="measure">Measure once</button><p id="measurementResult" class="outcome" aria-live="polite">Measurement results appear here. Measuring collapses the state.</p></section></aside></div><section class="panel lesson"><h2>What are you seeing?</h2><p>Every pure single-qubit state maps to a point on the Bloch sphere. The north pole is |0⟩, the south pole is |1⟩, and equatorial states are equal-probability superpositions. The vector encodes the relative phase as well as the measurement probabilities.</p><p>Try <strong>H → S</strong> and observe the rotation from the +X direction to the +Y direction. Try <strong>H → T → T</strong> for the same effect. You can also change θ and φ directly using the sliders.</p></section></main><footer>Quantum Learning Lab · Open-source educational prototype · MIT</footer><script type="module" src="app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="Interactive single-qubit Bloch sphere educational simulator">
+  <title>Quantum Learning Lab | Bloch Sphere</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="logo">◉ <strong>Quantum Learning Lab</strong></div>
+    <span class="eyebrow">Single-qubit laboratory · v0.2</span>
+  </header>
+  <main>
+    <section class="intro">
+      <span class="eyebrow">INTERACTIVE LEARNING</span>
+      <h1>Explore a qubit, one gate at a time.</h1>
+      <p>Apply quantum gates, rotate the state, and observe the Bloch vector, amplitudes, and measurement probabilities update together.</p>
+    </section>
+
+    <div class="layout">
+      <div class="left">
+        <section class="panel stage">
+          <div class="panelhead"><h2>Bloch sphere</h2><span id="angles">θ = 0° · φ = 0°</span></div>
+          <canvas id="sphere" width="720" height="560" role="img" aria-label="Bloch sphere with coordinate axes and a quantum state vector"></canvas>
+          <p class="hint">Drag to orbit the visualization. The orientation does not change the quantum state.</p>
+          <p class="hint legend" id="sphereLegend" hidden><span class="swatch axis"></span> Rotation axis and path of the selected gate · <span class="swatch ghost"></span> state before it</p>
+          <div class="sliders">
+            <label>Polar angle θ <strong id="thetaVal">0°</strong><input id="theta" aria-label="Polar angle theta" type="range" min="0" max="180" step="1" value="0"></label>
+            <label>Azimuth angle φ <strong id="phiVal">0°</strong><input id="phi" aria-label="Azimuthal angle phi" type="range" min="0" max="360" step="1" value="0"></label>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="circuitHeading">
+          <div class="panelhead">
+            <h2 id="circuitHeading">Circuit</h2>
+            <div class="tools">
+              <button id="undo" class="secondary" title="Undo the last gate, measurement or preparation">↶ Undo last step</button>
+              <button id="clear" class="secondary" title="Remove every step and reset the qubit to |0⟩">↺ Clear circuit</button>
+            </div>
+          </div>
+          <div class="circuit-scroll" id="circuit" role="group" aria-label="Quantum circuit. Select a step to inspect it; arrow keys move between steps."></div>
+          <div class="circuit-status">
+            <span id="circuitStatus">Input |0⟩ · no gates yet</span>
+            <button id="showLatest" class="link" hidden>Show latest →</button>
+          </div>
+          <details class="history-wrap" open>
+            <summary>History</summary>
+            <ol class="history" id="history"></ol>
+          </details>
+          <p class="footnote">Select any step to inspect it; the sphere, state and probabilities show the state after that step. New gates and measurements are always added at the end.</p>
+        </section>
+      </div>
+
+      <aside class="right">
+        <section class="panel">
+          <div class="panelhead"><h2>Quantum gates</h2></div>
+          <div class="gates" id="gates"></div>
+          <p id="gateInfo" class="explanation">Start in |0⟩. Apply H to create an equal superposition.</p>
+        </section>
+
+        <section class="panel">
+          <h2>State vector</h2>
+          <div class="equation" id="stateEquation" aria-live="polite"></div>
+          <p class="polar"><span class="muted">|ψ⟩ = e<sup>iγ</sup> ( cos(θ/2) |0⟩ + e<sup>iφ</sup> sin(θ/2) |1⟩ )</span><br><span id="polarEquation"></span></p>
+          <div class="metrics">
+            <div><small>α amplitude</small><strong id="alpha"></strong><span class="parts" id="alphaParts"></span></div>
+            <div><small>β amplitude</small><strong id="beta"></strong><span class="parts" id="betaParts"></span></div>
+          </div>
+          <dl class="anglelist">
+            <div><dt>Polar angle θ</dt><dd id="thetaFull"></dd></div>
+            <div><dt>Azimuth angle φ</dt><dd id="phiFull"></dd></div>
+          </dl>
+          <div class="phases">
+            <div class="phase global">
+              <small>Global phase γ</small><strong id="globalPhase"></strong>
+              <p>A common factor e<sup>iγ</sup> on the whole state. It changes no probability and no Bloch coordinate, so no measurement can detect it.</p>
+            </div>
+            <div class="phase relative">
+              <small>Relative phase φ</small><strong id="relativePhase"></strong>
+              <p>The phase of β relative to α. It is the Bloch azimuth and is measurable, for example after an H gate.</p>
+            </div>
+          </div>
+          <p class="footnote">Up to global phase: <span id="canonicalEquation"></span></p>
+        </section>
+
+        <section class="panel">
+          <h2>Measurement probabilities</h2>
+          <div class="measure-title"><span>|0⟩</span><strong id="p0">100%</strong></div>
+          <div class="track"><div class="fill zero" id="bar0" style="width:100%"></div></div>
+          <div class="measure-title"><span>|1⟩</span><strong id="p1">0%</strong></div>
+          <div class="track"><div class="fill one" id="bar1" style="width:0%"></div></div>
+          <button class="measure" id="measure">Measure once</button>
+          <p id="measurementResult" class="outcome" aria-live="polite">Measurement results appear here. Measuring collapses the state.</p>
+        </section>
+      </aside>
+    </div>
+
+    <section class="panel inspector" aria-labelledby="inspectorTitle">
+      <div class="panelhead"><h2 id="inspectorTitle">Gate inspector</h2><span id="inspectorStep"></span></div>
+      <div id="inspector"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Gate reference</h2>
+      <p class="hint">Each gate is a 2×2 unitary matrix acting on (α, β), and a rotation of the Bloch sphere (up to an unobservable global phase).</p>
+      <div class="table-scroll">
+        <table class="reference">
+          <thead><tr><th scope="col">Gate</th><th scope="col">Matrix</th><th scope="col">Bloch rotation</th><th scope="col">Bloch coordinates</th><th scope="col">Amplitudes</th><th scope="col">What it does</th></tr></thead>
+          <tbody id="gateReference"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel lesson">
+      <h2>What are you seeing?</h2>
+      <p>Every pure single-qubit state maps to a point on the Bloch sphere. The north pole is |0⟩, the south pole is |1⟩, and equatorial states are equal-probability superpositions. The vector encodes the relative phase as well as the measurement probabilities.</p>
+      <p>Try <strong>H → S</strong> and observe the rotation from the +X direction to the +Y direction. Try <strong>H → T → T</strong> for the same effect. You can also change θ and φ directly using the sliders.</p>
+      <p>Then try <strong>Y</strong> from |0⟩: the gate inspector shows Y|0⟩ = i|1⟩. The factor i is a <em>global</em> phase. It appears in the state vector, but the Bloch vector and probabilities are exactly those of |1⟩. Compare with <strong>H → Z</strong>, where the minus sign is a <em>relative</em> phase that moves the Bloch vector from +X to −X.</p>
+    </section>
+  </main>
+  <footer>Quantum Learning Lab · Open-source educational prototype · MIT</footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

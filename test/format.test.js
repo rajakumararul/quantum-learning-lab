@@ -1,7 +1,7 @@
 import {describe, test} from 'node:test';
 import assert from 'node:assert/strict';
 import {C, initial, applyGate, canonical} from '../quantum.js';
-import {MINUS, formatReal, formatComplex, formatStateEquation} from '../format.js';
+import {MINUS, formatReal, formatComplex, formatStateEquation, formatSum, formatKet, formatDegrees, formatRadians, formatAngle} from '../format.js';
 
 const R = Math.SQRT1_2;
 const display = (sequence) => {
@@ -92,4 +92,49 @@ describe('regression: what students see after gate sequences', () => {
     [['H', 'Z', 'T'], `|ψ⟩ = 0.707 |0⟩ + (${MINUS}0.500 ${MINUS} 0.500i) |1⟩`],
   ];
   for (const [sequence, text] of cases) test(sequence.join(' → ') || '(no gates)', () => assert.equal(display(sequence), text));
+});
+
+describe('formatSum and formatKet', () => {
+  test('a negative second term becomes a minus operator', () => {
+    assert.equal(formatSum(C(0.5), C(-0.5)), `0.500 ${MINUS} 0.500`);
+    assert.equal(formatSum(C(0.5), C(0, -0.5)), `0.500 ${MINUS} 0.500i`);
+    assert.equal(formatSum(C(0.5), C(0.25)), '0.500 + 0.250');
+  });
+
+  test('complex second terms keep signs inside parentheses', () => {
+    assert.equal(formatSum(C(0), C(-0.5, 0.5)), `0.000 + (${MINUS}0.500 + 0.500i)`);
+  });
+
+  test('formatKet is the state equation without the |ψ⟩ prefix', () => {
+    assert.equal(formatKet(C(R), C(-R)), `0.707 |0⟩ ${MINUS} 0.707 |1⟩`);
+    assert.equal(formatStateEquation(C(R), C(-R)), `|ψ⟩ = ${formatKet(C(R), C(-R))}`);
+  });
+});
+
+describe('angles in degrees and radians', () => {
+  test('degrees are rounded to 0.01 and drop trailing zeros', () => {
+    assert.equal(formatDegrees(Math.PI / 2), '90°');
+    assert.equal(formatDegrees(0.65), '37.24°');
+    assert.equal(formatDegrees(-Math.PI / 4), `${MINUS}45°`);
+    assert.equal(formatDegrees(-1e-15), '0°');
+  });
+
+  test('radians are written as reduced multiples of π when exact', () => {
+    const cases = [[0, '0'], [Math.PI, 'π'], [Math.PI / 2, 'π/2'], [Math.PI / 4, 'π/4'], [3 * Math.PI / 4, '3π/4'],
+      [Math.PI / 6, 'π/6'], [2 * Math.PI / 3, '2π/3'], [7 * Math.PI / 4, '7π/4'], [Math.PI / 12, 'π/12'],
+      [3 * Math.PI / 2, '3π/2'], [-Math.PI / 2, `${MINUS}π/2`], [-Math.PI, `${MINUS}π`], [2 * Math.PI, '2π']];
+    for (const [rad, text] of cases) assert.equal(formatRadians(rad), text, `${rad}`);
+  });
+
+  test('other angles fall back to 3-decimal radians', () => {
+    assert.equal(formatRadians(0.65), '0.650');
+    assert.equal(formatRadians(Math.PI / 180), '0.017');
+  });
+
+  test('formatAngle shows degrees, exact radians and a decimal value', () => {
+    assert.equal(formatAngle(0), '0° = 0 rad');
+    assert.equal(formatAngle(Math.PI / 2), '90° = π/2 rad ≈ 1.571');
+    assert.equal(formatAngle(Math.PI / 4), '45° = π/4 rad ≈ 0.785');
+    assert.equal(formatAngle(0.65), '37.24° = 0.650 rad');
+  });
 });

@@ -1,6 +1,6 @@
 import {describe, test} from 'node:test';
 import assert from 'node:assert/strict';
-import {C, mul, abs2, initial, basisState, gates, applyGate, canonical, fromAngles, bloch, angles, probabilities, measure} from '../quantum.js';
+import {C, mul, abs2, initial, basisState, gates, applyGate, canonical, fromAngles, bloch, angles, probabilities, measure, arg, decompose, matrixVectorSteps} from '../quantum.js';
 import {EPS, cis, norm2, rng, randomState, matMul, dagger, I2, rotate, assertClose, assertComplexClose, assertStateClose, assertVectorClose, assertMatrixClose} from './helpers.js';
 
 const R = Math.SQRT1_2;
@@ -383,5 +383,111 @@ describe('regression: golden gate sequences from |0⟩', () => {
   test('applying T eight times returns to the starting Bloch vector after H', () => {
     const start = run(initial(), ['H']);
     assertVectorClose(bloch(run(start, Array(8).fill('T'))), bloch(start), 1e-12);
+  });
+});
+
+describe('decompose: global phase γ, polar angle θ, relative phase φ', () => {
+  const rebuild = ({gamma, theta, phi}) => fromAngles(theta, phi).map((a) => mul(cis(gamma), a));
+
+  test('reconstructs the exact state as e^{iγ}(cos(θ/2)|0⟩ + e^{iφ} sin(θ/2)|1⟩)', () => {
+    const random = rng(51);
+    for (let i = 0; i < 1000; i++) {
+      const s = withGlobalPhase(randomState(random), random() * 7);
+      assertStateClose(rebuild(decompose(s)), s, 1e-12);
+    }
+  });
+
+  test('ranges: γ, φ in [0, 2π), θ in [0, π]', () => {
+    const random = rng(52);
+    for (let i = 0; i < 1000; i++) {
+      const {gamma, theta, phi} = decompose(withGlobalPhase(randomState(random), random() * 20 - 10));
+      assert.ok(gamma >= 0 && gamma < 2 * Math.PI && phi >= 0 && phi < 2 * Math.PI && theta >= 0 && theta <= Math.PI);
+    }
+  });
+
+  test('θ and φ agree with the Bloch-sphere angles', () => {
+    const random = rng(53);
+    for (let i = 0; i < 1000; i++) {
+      const s = withGlobalPhase(randomState(random), random() * 7), d = decompose(s), a = angles(s);
+      assertClose(d.theta, a.theta, 1e-7, 'θ');
+      if (Math.sin(d.theta) > 1e-6) assertClose(Math.cos(d.phi - a.phi), 1, 1e-12, 'φ');
+    }
+  });
+
+  test('a global phase changes γ only; θ and φ are invariant', () => {
+    const random = rng(54);
+    for (let i = 0; i < 300; i++) {
+      const s = randomState(random), d = decompose(s), delta = random() * 2 * Math.PI, e = decompose(withGlobalPhase(s, delta));
+      assertClose(e.theta, d.theta, 1e-12);
+      assertClose(Math.cos(e.phi - d.phi), 1, 1e-12);
+      assertClose(Math.cos(e.gamma - d.gamma - delta), 1, 1e-12);
+    }
+  });
+
+  test('Z, S, T change the relative phase by π, π/2, π/4 and leave the global phase alone', () => {
+    const s = fromAngles(1, 0.3), d = decompose(s);
+    for (const [g, shift] of [['Z', Math.PI], ['S', Math.PI / 2], ['T', Math.PI / 4]]) {
+      const e = decompose(applyGate(s, g));
+      assertClose(Math.cos(e.phi - d.phi - shift), 1, 1e-12, g);
+      assertClose(e.gamma, d.gamma, 1e-12, g);
+    }
+  });
+
+  test('Y|0⟩ = i|1⟩ is |1⟩ with global phase π/2', () => {
+    const d = decompose(applyGate(initial(), 'Y'));
+    assertClose(d.theta, Math.PI, 1e-15);
+    assertClose(d.gamma, Math.PI / 2, 1e-15);
+    assert.equal(d.phiDefined, false);
+  });
+
+  test('|−⟩ has relative phase π and no global phase; −|+⟩ has global phase π and no relative phase', () => {
+    const minus = decompose([C(R), C(-R)]), negPlus = decompose([C(-R), C(-R)]);
+    assertClose(minus.phi, Math.PI, 1e-15); assertClose(minus.gamma, 0, 1e-15);
+    assertClose(negPlus.phi, 0, 1e-15); assertClose(negPlus.gamma, Math.PI, 1e-15);
+  });
+
+  test('φ is undefined at the poles and reported as 0', () => {
+    for (const s of [ket0, ket1, [C(0), C(0, -1)], [C(0, 1), C(0)]]) {
+      const d = decompose(s);
+      assert.equal(d.phiDefined, false);
+      assert.equal(d.phi, 0);
+    }
+    assert.equal(decompose(plus).phiDefined, true);
+  });
+
+  test('angles within 1e-12 of 2π are reported as 0', () => {
+    const d = decompose([C(R), mul(cis(-1e-14), C(R))]);
+    assert.equal(d.phi, 0);
+  });
+
+  test('arg returns the complex argument', () => {
+    assertClose(arg(C(0, 1)), Math.PI / 2, 1e-15);
+    assertClose(arg(C(-1, 0)), Math.PI, 1e-15);
+  });
+});
+
+describe('matrixVectorSteps: the worked U|ψ⟩ shown to students', () => {
+  test('each row is U_i0·α + U_i1·β and equals applyGate', () => {
+    const random = rng(55);
+    for (let i = 0; i < 300; i++) {
+      const s = withGlobalPhase(randomState(random), random() * 7);
+      for (const g of GATE_NAMES) {
+        const rows = matrixVectorSteps(gates[g], s), out = applyGate(s, g);
+        rows.forEach((row, r) => {
+          assert.equal(row.entries, gates[g][r]);
+          assert.equal(row.inputs, s);
+          assertComplexClose(row.products[0], mul(gates[g][r][0], s[0]), 1e-15);
+          assertComplexClose(row.products[1], mul(gates[g][r][1], s[1]), 1e-15);
+          assertComplexClose(row.result, out[r], 1e-15, `${g} row ${r}`);
+        });
+      }
+    }
+  });
+
+  test('worked example: H|0⟩', () => {
+    const [top, bottom] = matrixVectorSteps(gates.H, ket0);
+    assertComplexClose(top.result, C(R), 1e-15);
+    assertComplexClose(bottom.result, C(R), 1e-15);
+    assertComplexClose(bottom.products[1], C(0), 1e-15);
   });
 });

@@ -1,1 +1,100 @@
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e6eefc;background:#0b1020;font-synthesis:none}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1280px;margin:auto}header{padding:22px 30px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #26334b}.logo{font-size:19px;color:#80aaff}.logo strong{color:#f1f5fd}.eyebrow{font-size:11px;letter-spacing:.14em;color:#8da1c0;font-weight:700}main{padding:32px 26px}.intro{max-width:800px;margin:0 0 26px}.intro h1{font-size:clamp(29px,4vw,46px);letter-spacing:-.04em;line-height:1.12;margin:12px 0}.intro p,.lesson p{line-height:1.65;color:#aebed5}.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:18px}.panel{border:1px solid #283855;border-radius:18px;background:#131d32;padding:22px;margin-bottom:18px;box-shadow:0 10px 30px #03081526}.panel h2{margin:0;font-size:18px;letter-spacing:-.02em}.panelhead{display:flex;align-items:center;justify-content:space-between;gap:10px}.panelhead span{font-size:12px;color:#a5b3ce}.stage{display:flex;flex-direction:column}canvas{width:100%;max-width:720px;display:block;align-self:center;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}.hint,.footnote{font-size:12px;color:#94a7c5;line-height:1.6}.sliders{border-top:1px solid #2c3c56;padding-top:18px;display:grid;gap:16px}.sliders label{display:grid;grid-template-columns:1fr auto;gap:10px;color:#dbe6fb;font-size:14px}.sliders input{grid-column:1/-1;width:100%;accent-color:#7a9cff;cursor:pointer}.gates{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:20px}.gates button{background:#243b65;color:#eaf0ff;border:1px solid #47618d;border-radius:9px;min-height:43px;font-weight:700;font-size:16px;cursor:pointer}.gates button:hover{background:#34558c}button:focus-visible,input:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}.secondary{border:1px solid #536780;border-radius:8px;background:#1c2a42;color:#d6e5fd;padding:9px 11px;cursor:pointer}.explanation{font-size:13px;color:#a9bedb;line-height:1.6;min-height:46px}.equation{background:#0b1428;padding:17px;border-radius:12px;font-size:18px;line-height:1.6;word-break:break-word;margin-top:16px;color:#d9e7ff}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.metrics>div{border:1px solid #2a3d5b;border-radius:10px;padding:13px;min-width:0}.metrics small{display:block;color:#9eafc9;margin-bottom:8px}.metrics strong{font-size:14px;word-break:break-word}.measure-title{display:flex;justify-content:space-between;margin:18px 0 8px}.track{height:13px;border-radius:12px;background:#263855;overflow:hidden}.fill{height:100%;transition:width .3s}.zero{background:#5794ff}.one{background:#f0b75a}.measure{margin-top:22px;width:100%;padding:13px;background:#4677df;color:#fff;font-weight:700;font-size:14px;border:0;border-radius:10px;cursor:pointer}.measure:hover{background:#5a89ed}.outcome{color:#afc1db;font-size:13px;line-height:1.6}.lesson{margin-top:0}.lesson h2{margin-bottom:12px}footer{border-top:1px solid #26334b;color:#8da1c0;padding:24px 28px;font-size:12px}@media(max-width:900px){.layout{grid-template-columns:1fr}.panel{padding:17px}.stage{margin-bottom:18px}.right{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}.right .panel{margin-bottom:0}.right .panel:first-child{grid-column:1/-1}}@media(max-width:620px){header{padding:17px;align-items:flex-start}.eyebrow{font-size:9px;text-align:right}main{padding:22px 12px}.right{display:block}.right .panel{margin-bottom:14px}.gates{grid-template-columns:repeat(3,1fr)}.intro h1{font-size:31px}.panelhead{flex-wrap:wrap}}
+
+/* ---- v0.2: circuit, history, state details, gate inspector, gate reference ---- */
+[hidden] { display: none !important; }
+.left { min-width: 0; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.secondary:disabled { opacity: .45; cursor: not-allowed; }
+.secondary:not(:disabled):hover { background: #26385a; }
+.muted { color: #8da1c0; }
+h3 { font-size: 14px; margin: 16px 0 8px; color: #dbe6fb; letter-spacing: -.01em; }
+
+/* Legend for the sphere overlay */
+.legend { margin-top: -4px; }
+.swatch { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+.swatch.axis { background: #c4a1ff; }
+.swatch.ghost { background: rgba(255, 207, 105, .45); }
+
+/* Circuit: one horizontal wire, standard gate boxes, measurement meter */
+.circuit-scroll { overflow-x: auto; margin-top: 16px; padding: 6px 2px 10px; border-radius: 12px; background: #0b1428; }
+.circuit-track { position: relative; display: inline-flex; align-items: center; gap: 16px; min-width: 100%; padding: 12px 16px; }
+.circuit-track::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #8099c0; }
+.c-node { position: relative; flex: none; min-width: 46px; height: 46px; padding: 0 8px; display: inline-grid; place-items: center; border: 1.5px solid #8fb0e6; border-radius: 6px; background: #1a2b4a; color: #eaf0ff; font: 700 17px system-ui, sans-serif; cursor: pointer; }
+.c-node:hover { background: #26406b; }
+.c-node[aria-current="step"] { background: #34558c; box-shadow: 0 0 0 3px #ffcf69; }
+.c-input { min-width: 0; border-color: transparent; background: #0b1428; font-size: 18px; }
+.c-input:hover { background: #16233d; }
+.c-prep { font-size: 15px; font-weight: 600; border-style: dashed; }
+.c-measure { grid-template-columns: auto auto; gap: 2px; }
+.c-measure svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.c-outcome { align-self: end; font-size: 12px; color: #ffcf69; }
+.circuit-status { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: #a5b3ce; }
+.link { background: none; border: 0; color: #9fbfff; font: inherit; font-weight: 600; cursor: pointer; padding: 4px 0; }
+.link:hover { text-decoration: underline; }
+
+/* History list */
+.history-wrap { margin-top: 12px; border-top: 1px solid #2c3c56; padding-top: 10px; }
+.history-wrap summary { cursor: pointer; font-size: 14px; font-weight: 600; color: #dbe6fb; }
+.history { list-style: none; margin: 8px 0 0; padding: 0; max-height: 230px; overflow: auto; display: grid; gap: 2px; }
+.history button { width: 100%; display: grid; grid-template-columns: 3.2em 6.5em minmax(0, 1fr); gap: 8px; align-items: baseline; text-align: left; padding: 6px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #c9d7ef; font: inherit; font-size: 13px; cursor: pointer; }
+.history button:hover { background: #18243b; }
+.history button[aria-current="step"] { border-color: #47618d; background: #1c2a42; }
+.h-index { color: #8da1c0; font-variant-numeric: tabular-nums; }
+.h-step { font-weight: 600; color: #eaf0ff; }
+.h-state { overflow-wrap: anywhere; }
+
+/* State details */
+.polar { font-size: 14px; line-height: 1.7; color: #d9e7ff; overflow-wrap: anywhere; margin: 12px 0 0; }
+.parts { display: block; margin-top: 8px; font-size: 11.5px; line-height: 1.5; color: #9eafc9; }
+.anglelist { display: grid; gap: 6px; margin: 14px 0 0; font-size: 13px; }
+.anglelist div { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.anglelist dt { color: #9eafc9; }
+.anglelist dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.phases { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.phase { border: 1px solid #2a3d5b; border-radius: 10px; padding: 12px; min-width: 0; }
+.phase.global { border-left: 4px solid #8da1c0; }
+.phase.relative { border-left: 4px solid #ffcf69; }
+.phase small { display: block; color: #9eafc9; margin-bottom: 6px; }
+.phase strong { font-size: 13px; }
+.phase p { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: #a9bedb; }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #0b1020; }
+.tag.relative { background: #ffcf69; }
+.tag.global { background: #8da1c0; }
+
+/* Matrices and formulas */
+.mat-wrap { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.prefactor { font-size: 14px; color: #d9e7ff; white-space: nowrap; }
+.mat { display: inline-grid; grid-template-columns: repeat(var(--cols), auto); gap: 4px 16px; padding: 6px 10px; border-left: 2px solid #8fb0e6; border-right: 2px solid #8fb0e6; border-radius: 7px; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.matrix-eq { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 15px; margin: 8px 0; }
+.formula { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.6; color: #d9e7ff; overflow-wrap: anywhere; }
+.steps { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 10px; }
+.steps li { display: grid; gap: 1px; }
+.steps strong.formula { color: #ffcf69; }
+.phase-change { font-size: 13px; line-height: 2; color: #c9d7ef; margin: 0; }
+
+/* Gate inspector */
+.inspector .panelhead span { text-align: right; }
+.inspector-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 24px; }
+.inspector-grid p { font-size: 14px; line-height: 1.6; margin: 6px 0; }
+.inspector .explanation { min-height: 0; font-size: 14px; }
+
+/* Gate reference */
+.table-scroll { overflow-x: auto; }
+.reference { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 13px; line-height: 1.5; }
+.reference th, .reference td { padding: 10px 8px; border-bottom: 1px solid #283855; text-align: left; vertical-align: top; color: #c9d7ef; }
+.reference thead th { color: #9eafc9; font-size: 12px; font-weight: 600; }
+.reference tbody th small { display: block; font-weight: 400; color: #9eafc9; }
+.ref-gate { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-bottom: 4px; border: 1.5px solid #8fb0e6; border-radius: 6px; background: #1a2b4a; font-weight: 700; color: #eaf0ff; }
+
+@media (max-width: 900px) {
+  .inspector-grid { grid-template-columns: 1fr; gap: 8px; }
+}
+@media (max-width: 620px) {
+  .phases { grid-template-columns: 1fr; }
+  .history button { grid-template-columns: 2.6em 5.5em minmax(0, 1fr); }
+  .c-node { min-width: 42px; height: 42px; }
+  .tools { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fill { transition: none; }
+}
