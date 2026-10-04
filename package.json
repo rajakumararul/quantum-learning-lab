@@ -1,0 +1,14 @@
+{
+  "name": "quantum-learning-lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive single-qubit Bloch sphere educational simulator",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
