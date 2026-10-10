@@ -13,6 +13,7 @@ A free, client-side, offline-capable-after-download **one- and two-qubit educati
 - 4×4 matrices, amplitudes α, β, γ, δ with exact forms such as 1/√2, and a probability histogram
 - Entanglement via the concurrence C = 2|αδ − βγ|, reduced density matrices ρ₀ = Tr₁ρ, ρ₁ = Tr₀ρ and their Bloch vectors
 - Guided preparation of the four Bell states and two-qubit experiments (Bell pair, superposition vs entanglement, SWAP, CZ)
+- **Measurement lab** in both modes: live measurement with collapse (recorded in the circuit, undoable), a shot simulator (1 to 100,000 shots) comparing Born-rule probabilities with observed counts, frequencies and errors, a convergence demonstration, joint and partial (q0 or q1) measurement with conditional collapse, seeded reproducible runs, and a measurement history kept separate from Undo
 - Theta and phi state preparation controls
 - Live state amplitudes and measurement probabilities
 - Computational-basis measurement with state collapse
@@ -48,6 +49,12 @@ They cover every gate and rotation matrix (unitarity, 2π = −I, exact preset a
 | `gate-info.js`, `rotation-info.js` | Educational reference data, checked against the maths by tests |
 | `transformation.js` | Display-ready description of a rotation step |
 | `experiments.js` | Guided experiments and phase demonstrations (data) |
+| `measurement.js` | Born-rule distributions, marginals, collapse and conditional states |
+| `sampling.js` | Distribution validation and unbiased inverse-CDF sampling |
+| `rng.js` | Seeded pseudo-random generator (mulberry32, 53-bit uniforms) and seed parsing |
+| `shot-simulator.js` | N-shot experiments, shot-count validation, convergence runs |
+| `measurement-history.js`, `measurement-experiments.js` | Shot-experiment history and guided measurement experiments |
+| `measurement-view.js` | The Measurement lab UI (shared by both modes) |
 | `tensor.js` | Complex n×n linear algebra: Kronecker product, products, adjoint, trace |
 | `multi-qubit.js` | Two-qubit states, basis ordering, U ⊗ I / I ⊗ U operators, measurement |
 | `controlled-gates.js` | CNOT, CZ, SWAP and a generic controlled-U builder (registry for future gates) |
@@ -74,6 +81,7 @@ There is no build step: the site is plain HTML, CSS, and JavaScript. This is del
 `|ψ⟩=α|0⟩+β|1⟩` with |α|²+|β|²=1.
 Bloch vector: `x=2 Re(α*β), y=2 Im(α*β), z=|α|²−|β|²`. State displays remove an unobservable global phase. The measurement button samples and collapses the state.
 Rotations: `R_n(θ) = cos(θ/2) I − i sin(θ/2) n·σ`, so `R_n(2π) = −I`: the same physical operation as I (global phase π), but not the same matrix.
+Measurement: **N shots** means preparing the state, measuring once and recording the outcome, N times. Each shot starts from the same prepared state, and the live state is never changed. A **live measurement** samples one outcome and collapses the state, and measuring again immediately repeats that outcome. Seeded runs use a pseudo-random generator, for reproducibility only; it is not quantum randomness.
 Two qubits: `|ψ⟩ = α|00⟩ + β|01⟩ + γ|10⟩ + δ|11⟩`, where a label `|q0 q1⟩` lists q0 first, so the basis index is `k = 2·q0 + q1` and q0 is the left tensor factor (a gate on q0 is `U ⊗ I`). Some toolkits, such as Qiskit, order qubits the other way round.
 The sphere is drawn in a right-handed frame (X × Y = Z), so S and T rotate anticlockwise when viewed from |0⟩. Arcs on the far hemisphere are dashed.
 
