@@ -3,16 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#101827">
+  <meta name="theme-color" content="#0b1020">
   <meta name="description" content="Interactive one- and two-qubit quantum computing simulator: Bloch sphere, gates, rotations, controlled gates and entanglement">
   <title>Quantum Learning Lab | Bloch Sphere</title>
+  <script>
+    // Apply the theme before first paint, so the page never flashes the wrong theme.
+    // Same rules as theme.js: a saved "light"/"dark" choice wins; otherwise follow the OS (light only if it prefers light).
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem('qll-theme'); } catch (e) { /* storage blocked */ }
+      if (theme !== 'light' && theme !== 'dark') theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', theme === 'light' ? '#f3f6fb' : '#0b1020');
+    }());
+  </script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header>
     <div class="logo">◉ <strong>Quantum Learning Lab</strong></div>
-    <span class="eyebrow">Quantum laboratory · v0.5</span>
+    <div class="header-tools">
+      <span class="eyebrow">Quantum laboratory · v0.5</span>
+      <button type="button" id="themeToggle" class="theme-toggle" aria-label="Theme: dark. Switch to light theme"><span class="theme-icon" aria-hidden="true">☾</span><span class="theme-text">Dark</span></button>
+    </div>
   </header>
   <main>
     <section class="intro">
@@ -306,7 +321,10 @@
       </section>
     </div>
   </main>
-  <footer>Quantum Learning Lab · Open-source educational prototype · MIT</footer>
+  <footer>
+    <span>Quantum Learning Lab · Open-source educational prototype · MIT</span>
+    <span class="credit">Made with <span class="heart" aria-hidden="true">♥</span><span class="visually-hidden">love</span> by <strong>VQTF, VIT Chennai</strong> <span role="img" aria-label="India">🇮🇳</span></span>
+  </footer>
   <script type="module" src="app.js"></script>
 </body>
 </html>

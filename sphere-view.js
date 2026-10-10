@@ -6,8 +6,17 @@
 import {projectBloch} from './projection.js';
 import {rotateAbout} from './gate-info.js';
 
-export const OVERLAY_COLOR = '#c4a1ff';
-const STATE_COLOR = '#ffcf69';
+// Colours come from the CSS design tokens, so the sphere follows the light/dark theme. The values
+// below are the dark-theme defaults, used if a token is missing (e.g. before styles load).
+const PALETTE_DEFAULTS = {
+  state: '#ffcf69', axis: '#c4a1ff', 'sphere-glow-a': 'rgba(76,129,245,.21)', 'sphere-glow-b': 'rgba(76,129,245,.045)',
+  'sphere-edge': '#5174ab', 'sphere-equator': '#4971a6', 'sphere-meridian': '#355980', 'sphere-axis': '#8099c0',
+  'sphere-label': '#dbeaff', 'sphere-origin': '#cad9ff', 'state-ghost-line': 'rgba(255,207,105,.38)',
+};
+export function canvasPalette(element) {
+  const style = typeof getComputedStyle === 'function' && element ? getComputedStyle(element) : null;
+  return Object.fromEntries(Object.entries(PALETTE_DEFAULTS).map(([name, fallback]) => [name, style?.getPropertyValue(`--${name}`).trim() || fallback]));
+}
 
 // Unit vectors e1, e2 with e1 × e2 = axis, so increasing t in cos t e1 + sin t e2 turns by the right-hand rule.
 function perpendicularBasis([ux, uy, uz]) {
@@ -20,7 +29,7 @@ function perpendicularBasis([ux, uy, uz]) {
 }
 
 export function drawBlochSphere(canvas, {yaw, pitch, vector, overlay}) {
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d'), colors = canvasPalette(canvas);
   const W = canvas.width, H = canvas.height, cx = W / 2, cy = H / 2, r = Math.min(W, H) * .365;
   ctx.clearRect(0, 0, W, H);
   const project = (v) => {
@@ -53,8 +62,8 @@ export function drawBlochSphere(canvas, {yaw, pitch, vector, overlay}) {
   }
 
   const glow = ctx.createRadialGradient(cx - r * .3, cy - r * .4, r * .05, cx, cy, r);
-  glow.addColorStop(0, 'rgba(76,129,245,.21)'); glow.addColorStop(1, 'rgba(76,129,245,.045)');
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fillStyle = glow; ctx.fill(); ctx.strokeStyle = '#5174ab'; ctx.lineWidth = 2; ctx.stroke();
+  glow.addColorStop(0, colors['sphere-glow-a']); glow.addColorStop(1, colors['sphere-glow-b']);
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fillStyle = glow; ctx.fill(); ctx.strokeStyle = colors['sphere-edge']; ctx.lineWidth = 2; ctx.stroke();
 
   // Arcs on the far hemisphere are dashed and dimmed so the viewer can tell front from back (and hence handedness).
   function circle(plane, color) {
@@ -71,21 +80,21 @@ export function drawBlochSphere(canvas, {yaw, pitch, vector, overlay}) {
     }
     ctx.setLineDash([]); ctx.globalAlpha = 1;
   }
-  circle((t) => ({x: Math.cos(t), y: Math.sin(t), z: 0}), '#4971a6');
-  circle((t) => ({x: Math.cos(t), y: 0, z: Math.sin(t)}), '#355980');
-  circle((t) => ({x: 0, y: Math.cos(t), z: Math.sin(t)}), '#355980');
+  circle((t) => ({x: Math.cos(t), y: Math.sin(t), z: 0}), colors['sphere-equator']);
+  circle((t) => ({x: Math.cos(t), y: 0, z: Math.sin(t)}), colors['sphere-meridian']);
+  circle((t) => ({x: 0, y: Math.cos(t), z: Math.sin(t)}), colors['sphere-meridian']);
 
   for (const axis of [{v: {x: 1.2, y: 0, z: 0}, label: '+X'}, {v: {x: 0, y: 1.2, z: 0}, label: '+Y'}, {v: {x: 0, y: 0, z: 1.2}, label: '|0⟩'}, {v: {x: 0, y: 0, z: -1.2}, label: '|1⟩'}]) {
-    line(O, axis.v, '#8099c0', 1.5, [4, 5]);
+    line(O, axis.v, colors['sphere-axis'], 1.5, [4, 5]);
     const a = project(axis.v);
-    ctx.fillStyle = '#dbeaff'; ctx.font = 'bold 18px system-ui'; ctx.fillText(axis.label, a.x + 5, a.y - 5);
+    ctx.fillStyle = colors['sphere-label']; ctx.font = 'bold 18px system-ui'; ctx.fillText(axis.label, a.x + 5, a.y - 5);
   }
 
   if (overlay) {
     const {from, axis, angle = 0, label = '', progress = 1} = overlay;
     if (axis) {
       const [ux, uy, uz] = axis, at = (k) => ({x: k * ux, y: k * uy, z: k * uz});
-      line(at(-1.25), at(1.25), OVERLAY_COLOR, 2.5, [8, 6]);
+      line(at(-1.25), at(1.25), colors.axis, 2.5, [8, 6]);
       // Rotation sense: a small arc around the +axis end, swept in the direction of the rotation.
       if (Math.abs(angle) > 1e-9) {
         const [e1, e2] = perpendicularBasis(axis), sweep = Math.sign(angle) * Math.min(Math.max(Math.abs(angle), Math.PI / 2), 1.8 * Math.PI);
@@ -94,27 +103,27 @@ export function drawBlochSphere(canvas, {yaw, pitch, vector, overlay}) {
           const t = sweep * i / 40, c = Math.cos(t) * .15, s = Math.sin(t) * .15;
           ring.push(project({x: 1.1 * ux + c * e1[0] + s * e2[0], y: 1.1 * uy + c * e1[1] + s * e2[1], z: 1.1 * uz + c * e1[2] + s * e2[2]}));
         }
-        polyline(ring, OVERLAY_COLOR, 2.2);
-        arrowHead(ring, OVERLAY_COLOR, 9);
+        polyline(ring, colors.axis, 2.2);
+        arrowHead(ring, colors.axis, 9);
       }
       const end = project(at(1.36));
-      ctx.fillStyle = OVERLAY_COLOR; ctx.font = 'bold 15px system-ui'; ctx.textAlign = 'center';
+      ctx.fillStyle = colors.axis; ctx.font = 'bold 15px system-ui'; ctx.textAlign = 'center';
       ctx.fillText(label || 'rotation axis', end.x, end.y + 24); ctx.textAlign = 'start';
     }
-    line(O, from, 'rgba(255,207,105,.38)', 3);
-    dot(project(from), 6, STATE_COLOR, .4);
+    line(O, from, colors['state-ghost-line'], 3);
+    dot(project(from), 6, colors.state, .4);
     if (axis && Math.abs(angle) > 1e-9) {
       const n = Math.max(48, Math.ceil(Math.abs(angle) / (Math.PI / 48)));
       const path = Array.from({length: n + 1}, (_, i) => project(rotateAbout(from, axis, angle * i / n)));
       const traced = path.slice(0, Math.max(1, Math.round(progress * n)) + 1);
-      if (progress < 1) polyline(path, OVERLAY_COLOR, 2, .35, [3, 5]);
-      polyline(traced, OVERLAY_COLOR, 2.5);
-      if (progress >= 1) arrowHead(path, OVERLAY_COLOR);
+      if (progress < 1) polyline(path, colors.axis, 2, .35, [3, 5]);
+      polyline(traced, colors.axis, 2.5);
+      if (progress >= 1) arrowHead(path, colors.axis);
     }
   }
 
-  line(O, vector, STATE_COLOR, 5);
+  line(O, vector, colors.state, 5);
   const end = project(vector);
-  dot(end, 8, STATE_COLOR, end.depth < -1e-9 ? .55 : 1);
-  dot(origin, 3, '#cad9ff');
+  dot(end, 8, colors.state, end.depth < -1e-9 ? .55 : 1);
+  dot(origin, 3, colors['sphere-origin']);
 }

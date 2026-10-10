@@ -11,6 +11,7 @@ import {amplitudeTable, probabilityHistogram, marginals, entanglementPanel, redu
 import {bellStates, twoQubitExperiments, experimentSteps2, judgeTwoQubit} from './two-qubit-experiments.js';
 import {createExperimentCards} from './experiments-view.js';
 import {createMeasurementLab} from './measurement-view.js';
+import {THEME_EVENT} from './theme.js';
 import {parseDegrees, degreesToRadians} from './angle-input.js';
 import {drawBlochSphere} from './sphere-view.js';
 import {defaultView} from './projection.js';
@@ -209,6 +210,9 @@ export function createTwoQubitMode({history}) {
     measureLive,
     loadSteps: load,
   });
+
+  // Redraw the reduced-state spheres in the new theme's colours; the circuit and selection are untouched.
+  document.addEventListener(THEME_EVENT, () => drawSpheres(statesOf2(circuit)[selected]));
 
   updateGateLabels();
   validateRotation();
