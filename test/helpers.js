@@ -60,3 +60,15 @@ export function rotate(v, [ux, uy, uz], angle) {
     z: v.z * c + cross.z * s + uz * d * (1 - c),
   };
 }
+
+// ---- Two-qubit helpers (n×n matrices, 4-component states) ----
+export function assertMatrixCloseN(A, B, eps = 1e-12, message = '') {
+  assert.equal(A.length, B.length, `${message} rows`);
+  A.forEach((row, i) => row.forEach((a, j) => assertComplexClose(a, B[i][j], eps, `${message} [${i}][${j}]`)));
+}
+export const assertState4Close = (a, b, eps = 1e-12, message = '') => a.forEach((x, k) => assertComplexClose(x, b[k], eps, `${message} |${['00', '01', '10', '11'][k]}⟩`));
+// Random normalized two-qubit state (generally entangled).
+export function randomState2(random) {
+  const v = Array.from({length: 4}, () => C(random() - 0.5, random() - 0.5)), n = Math.sqrt(v.reduce((t, a) => t + abs2(a), 0));
+  return v.map((a) => C(a.re / n, a.im / n));
+}

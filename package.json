@@ -2,10 +2,11 @@
   "name": "quantum-learning-lab",
   "version": "0.1.0",
   "private": true,
-  "description": "Interactive single-qubit Bloch sphere educational simulator",
+  "description": "Interactive one- and two-qubit quantum computing educational simulator",
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "serve": "node scripts/serve.mjs"
   },
   "engines": {
     "node": ">=20"
