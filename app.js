@@ -13,11 +13,14 @@ import {drawBlochSphere} from './sphere-view.js';
 import {animationFrame, rotationDuration} from './bloch-animation.js';
 import {el, math, matrixNode, vectorText, subscript} from './dom.js';
 import {createTwoQubitMode} from './two-qubit-app.js';
+import {createMeasurementLab} from './measurement-view.js';
+import {createHistoryStore} from './measurement-history.js';
 
 const $ = (id) => document.getElementById(id);
 const GATES = Object.keys(gateInfo);
 
 // ---- Application state ------------------------------------------------------
+let lab = null; // Measurement lab, created once the page is wired (see the end of this file)
 let circuit = emptyCircuit();
 let selected = 0; // index into statesOf(circuit) currently displayed; 0 = input |0⟩
 let {yaw, pitch} = defaultView, drag = null;
@@ -85,12 +88,15 @@ for (const id of ['theta', 'phi']) {
   });
 }
 
-$('measure').addEventListener('click', () => {
-  const {outcome} = measure(statesOf(circuit).at(-1));
+// One real measurement of the live (latest) state: sample, collapse, and record it as a circuit step.
+function measureLive() {
+  const before = statesOf(circuit).at(-1), {outcome} = measure(before);
   commit(addMeasurement(circuit, outcome));
   $('measurementResult').textContent = `Outcome |${outcome}⟩. The state collapsed to |${outcome}⟩.`;
   $('gateInfo').textContent = 'Computational-basis measurement projects the state to the observed basis state.';
-});
+  return {outcome, before, after: statesOf(circuit).at(-1)};
+}
+$('measure').addEventListener('click', measureLive);
 
 function select(index, {focus = false} = {}) {
   selected = Math.max(0, Math.min(circuit.steps.length, index));
@@ -129,6 +135,7 @@ function render({syncSliders = true} = {}) {
   overlay = overlayFor(step, before);
   $('sphereLegend').hidden = !overlay?.axis;
   draw();
+  lab?.update();
 }
 
 // What the sphere shows for the selected step: the state before it and, for any unitary, its rotation.
@@ -268,7 +275,25 @@ render();
 // ---- Mode selection ----------------------------------------------------------------
 // The two modes keep separate circuits. Entering a mode starts it fresh (|0⟩ or |00⟩), so no history
 // is ever carried between a one-qubit and a two-qubit circuit. #two-qubits in the URL opens two-qubit mode.
-const twoQubit = createTwoQubitMode();
+const measurementHistory = createHistoryStore(); // shared by both modes, separate from circuit Undo
+const ketLabel = (k, state) => `|ψ${subscript(k)}⟩ = ${formatKet(state[0], state[1])}`;
+lab = createMeasurementLab({
+  root: $('labSingle'), mode: 'single', prefix: 'ms', history: measurementHistory,
+  getShown: () => {
+    const state = statesOf(circuit)[selected];
+    return {state, label: ketLabel(selected, state), afterMeasurement: circuit.steps.slice(0, selected).some((s) => s.type === 'measure')};
+  },
+  getLive: () => {
+    const state = statesOf(circuit).at(-1);
+    return {state, label: ketLabel(circuit.steps.length, state)};
+  },
+  measureLive,
+  loadSteps(steps) {
+    commit(circuitOf(steps));
+    $('gateInfo').textContent = 'Experiment loaded. The circuit and history show its steps.';
+  },
+});
+const twoQubit = createTwoQubitMode({history: measurementHistory});
 function setMode(mode) {
   const two = mode === 'two';
   $('singleMode').hidden = two;

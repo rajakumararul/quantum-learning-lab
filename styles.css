@@ -301,3 +301,77 @@ input[type="radio"]:focus-visible { outline: 3px solid #f59e0b; outline-offset: 
 @media (prefers-reduced-motion: reduce) {
   .h-fill { transition: none; }
 }
+
+/* ---- v0.5: measurement lab ---- */
+.measure-lab h4 { margin: 12px 0 4px; font-size: 13px; color: #dbe6fb; }
+.m-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; border-bottom: 1px solid #2c3c56; padding-bottom: 10px; }
+.m-tabs [role="tab"] { padding: 8px 14px; border: 1px solid #47618d; border-radius: 999px; background: #1c2a42; color: #d6e5fd; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.m-tabs [role="tab"]:hover { background: #26385a; }
+.m-tabs [role="tab"][aria-selected="true"] { background: #34558c; border-color: #80aaff; color: #fff; box-shadow: 0 0 0 1px #80aaff; }
+.m-tabs [role="tab"]:focus-visible, .m-panel:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.m-panel { padding-top: 12px; }
+.m-panel .explanation { min-height: 0; }
+.m-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 18px; margin: 12px 0; align-items: start; }
+.m-field { min-width: 0; display: grid; gap: 6px; align-content: start; font-size: 14px; color: #dbe6fb; }
+.m-field legend { font-size: 14px; margin-bottom: 6px; }
+.m-field input[type="text"] { width: 9em; padding: 7px 9px; border: 1px solid #536780; border-radius: 8px; background: #0b1428; color: #eaf0ff; font: inherit; font-variant-numeric: tabular-nums; }
+.m-field input[type="text"]:disabled { opacity: .5; }
+.m-field input[aria-invalid="true"] { border-color: #ff8a8a; box-shadow: 0 0 0 1px #ff8a8a; }
+.m-field .presets { margin-top: 0; }
+.m-field .hint { margin: 0; }
+.m-options { display: grid; gap: 6px; }
+.m-option, .m-check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.m-option input, .m-check input { accent-color: #c4a1ff; margin: 0; width: 16px; height: 16px; }
+.m-live-buttons { margin: 10px 0; }
+.m-live-buttons .measure { width: auto; margin: 0; padding: 11px 16px; }
+.m-result { margin-top: 12px; }
+.m-result:empty { display: none; }
+.m-outcome { font-size: 20px; font-weight: 700; margin: 4px 0; }
+.m-outcome small { font-size: 13px; font-weight: 400; color: #a9bedb; }
+.m-summary { font-weight: 600; color: #dbe6fb; }
+.m-dist h3 { margin: 10px 0 2px; font-size: 13px; color: #9eafc9; }
+.m-contrast { margin-top: 16px; padding: 12px 14px; border: 1px solid #2a3d5b; border-left: 4px solid #c4a1ff; border-radius: 10px; }
+.m-contrast h3 { margin-top: 0; }
+.m-contrast p { font-size: 13px; line-height: 1.6; color: #c9d7ef; margin: 6px 0; }
+.measure-lab .apply { width: auto; padding: 11px 18px; }
+
+/* Results table and chart */
+.shot-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; margin-top: 8px; }
+.shot-table caption { text-align: left; font-size: 12px; color: #9eafc9; padding-bottom: 6px; }
+.shot-table th, .shot-table td { padding: 6px 8px; border-bottom: 1px solid #283855; text-align: left; color: #c9d7ef; white-space: nowrap; }
+.shot-table thead th { color: #9eafc9; font-weight: 600; font-size: 12px; }
+.shot-table tbody th { color: #eaf0ff; font-weight: 600; }
+.history-table td.formula { white-space: normal; min-width: 14em; }
+.shot-chart { margin: 12px 0 4px; }
+.shot-chart ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+/* A fixed-width value column keeps every bar track the same length, so all rows share one scale. */
+.shot-chart li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) 15.5em; align-items: center; gap: 10px; font-size: 13px; }
+.sc-label { font-weight: 600; color: #dbe6fb; }
+.sc-track { position: relative; height: 20px; border-radius: 5px; background: #1a2740; }
+.sc-observed { position: absolute; left: 0; top: 4px; bottom: 4px; border-radius: 3px; background: #5794ff; }
+.sc-theory { position: absolute; left: 0; top: 0; bottom: 0; box-sizing: border-box; border: 2px dashed #ffcf69; border-radius: 5px; z-index: 1; }
+.sc-values { color: #c9d7ef; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sc-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 10px; font-size: 12px; color: #a9bedb; }
+.key { display: inline-block; width: 22px; height: 10px; border-radius: 2px; vertical-align: middle; }
+.key.observed { background: #5794ff; }
+.key.theory { border: 2px dashed #ffcf69; height: 12px; }
+.legend-item { white-space: nowrap; }
+.shot-chart.compact li { grid-template-columns: 2.8em minmax(0, 1fr); font-size: 12px; }
+.shot-chart.compact .sc-values { grid-column: 2; margin-top: -6px; font-size: 11px; color: #9eafc9; }
+.shot-chart.compact .sc-track { height: 14px; }
+.shot-chart.compact .sc-observed { top: 3px; bottom: 3px; }
+.conv-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.conv-grid h3 { margin: 0 0 4px; }
+
+/* Guided experiments */
+.m-guided-title { margin-top: 22px; font-size: 16px; }
+.m-guided { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.m-guided .feedback:empty { display: none; }
+
+@media (max-width: 1100px) { .conv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) {
+  .conv-grid { grid-template-columns: 1fr; }
+  .shot-chart li { grid-template-columns: 3em minmax(0, 1fr); }
+  .shot-chart li .sc-values { grid-column: 2; margin-top: -6px; font-size: 12px; }
+  .m-tabs [role="tab"] { flex: 1 1 calc(50% - 6px); padding: 8px 10px; }
+}

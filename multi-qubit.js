@@ -8,6 +8,7 @@
 // left-to-right convention so that |10⟩ means q0 = 1, q1 = 0.)
 import {C, abs2} from './quantum.js';
 import {identity, kron, kronVector, matVec, vectorNorm2} from './tensor.js';
+import {normalizeDistribution, sampleIndex} from './sampling.js';
 
 export const BASIS = ['00', '01', '10', '11'];
 export const QUBITS = [0, 1];
@@ -56,9 +57,9 @@ export function measureQubit(state, qubit, random = Math.random()) {
 }
 
 // Measuring both qubits: outcome k with probability |amplitude_k|²; the state collapses to the basis state |k⟩.
+// Uses the shared half-open inverse-CDF sampler, so a zero-probability outcome is never chosen even
+// when floating-point drift makes the probabilities sum to slightly less than 1.
 export function measureBoth(state, random = Math.random()) {
-  const p = probabilities2(state);
-  let k = 0, acc = p[0];
-  while (k < 3 && random >= acc) acc += p[++k];
+  const k = sampleIndex(normalizeDistribution(probabilities2(state)), random);
   return {outcome: k, state: basis2(k)};
 }

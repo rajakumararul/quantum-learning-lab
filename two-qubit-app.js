@@ -10,6 +10,7 @@ import {renderCircuit2, stepLabel2} from './two-qubit-circuit-view.js';
 import {amplitudeTable, probabilityHistogram, marginals, entanglementPanel, reducedStatePanel, inspectorContent, bellCard} from './two-qubit-view.js';
 import {bellStates, twoQubitExperiments, experimentSteps2, judgeTwoQubit} from './two-qubit-experiments.js';
 import {createExperimentCards} from './experiments-view.js';
+import {createMeasurementLab} from './measurement-view.js';
 import {parseDegrees, degreesToRadians} from './angle-input.js';
 import {drawBlochSphere} from './sphere-view.js';
 import {defaultView} from './projection.js';
@@ -25,9 +26,9 @@ const TWO_GATES = [
   {label: 'SWAP', gate: 'SWAP', aria: 'Swap q0 and q1'},
 ];
 
-export function createTwoQubitMode() {
+export function createTwoQubitMode({history}) {
   const $ = (id) => document.getElementById(id);
-  let circuit = emptyCircuit(), selected = 0, target = 0;
+  let circuit = emptyCircuit(), selected = 0, target = 0, lab = null;
   let {yaw, pitch} = defaultView;
   const spheres = [$('tqSphere0'), $('tqSphere1')];
 
@@ -85,18 +86,19 @@ export function createTwoQubitMode() {
   }
 
   const current = () => statesOf2(circuit).at(-1);
-  $('tqMeasure0').addEventListener('click', () => measureOne(0));
-  $('tqMeasure1').addEventListener('click', () => measureOne(1));
-  function measureOne(q) {
-    const {outcome} = measureQubit(current(), q);
-    commit(addMeasurement2(circuit, q, outcome));
-    $('tqMeasureResult').textContent = `q${q} gave ${outcome}. The state is now ${formatKet2(current())}.`;
+  // One real measurement of the live state, recorded as a circuit step. target: 'joint', 0 or 1.
+  function measureLive(target) {
+    const before = current();
+    const {outcome} = target === 'joint' ? measureBoth(before) : measureQubit(before, target);
+    commit(addMeasurement2(circuit, target === 'joint' ? 'both' : target, outcome));
+    $('tqMeasureResult').textContent = target === 'joint'
+      ? `Both qubits measured: outcome |${BASIS[outcome]}⟩.`
+      : `q${target} gave ${outcome}. The state is now ${formatKet2(current())}.`;
+    return {outcome, before, after: current()};
   }
-  $('tqMeasureBoth').addEventListener('click', () => {
-    const {outcome} = measureBoth(current());
-    commit(addMeasurement2(circuit, 'both', outcome));
-    $('tqMeasureResult').textContent = `Both qubits measured: outcome |${BASIS[outcome]}⟩.`;
-  });
+  $('tqMeasure0').addEventListener('click', () => measureLive(0));
+  $('tqMeasure1').addEventListener('click', () => measureLive(1));
+  $('tqMeasureBoth').addEventListener('click', () => measureLive('joint'));
 
   $('tqUndo').addEventListener('click', () => { if (circuit.steps.length) commit(undo(circuit), 'Removed the last step.'); });
   $('tqClear').addEventListener('click', () => reset('Circuit cleared. Both qubits are back in |00⟩.'));
@@ -188,12 +190,25 @@ export function createTwoQubitMode() {
     $('tqInspectorStep').textContent = step ? `Step ${selected}` : '';
     $('tqInspector').replaceChildren(...nodes);
     drawSpheres(state);
+    lab?.update();
   }
 
   function reset(message = 'Two-qubit mode: both qubits start in |00⟩. Choose a target qubit and apply gates.') {
     commit(emptyCircuit(), message);
     $('tqMeasureResult').textContent = 'Measure one qubit, or both. Measuring collapses the state.';
   }
+
+  const ketLabel = (k, state) => `|ψ${subscript(k)}⟩ = ${formatKet2(state)}`;
+  lab = createMeasurementLab({
+    root: $('labTwo'), mode: 'two', prefix: 'mt', history,
+    getShown: () => {
+      const state = statesOf2(circuit)[selected];
+      return {state, label: ketLabel(selected, state), afterMeasurement: circuit.steps.slice(0, selected).some((s) => s.type === 'measure')};
+    },
+    getLive: () => ({state: current(), label: ketLabel(circuit.steps.length, current()), format: formatKet2}),
+    measureLive,
+    loadSteps: load,
+  });
 
   updateGateLabels();
   validateRotation();
