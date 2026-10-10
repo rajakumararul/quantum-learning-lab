@@ -98,3 +98,103 @@ h3 { font-size: 14px; margin: 16px 0 8px; color: #dbe6fb; letter-spacing: -.01em
 @media (prefers-reduced-motion: reduce) {
   .fill { transition: none; }
 }
+
+/* ---- v0.3: rotation gates, transformation panel, experiments, phase lesson ---- */
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+legend { padding: 0; }
+input[type="radio"]:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+
+/* Circuit: rotation boxes carry their parameter */
+.c-rot { grid-template-rows: auto auto; gap: 0; height: 52px; line-height: 1.05; }
+.c-rot-name { font-size: 16px; }
+.c-rot-name sub { font-size: 11px; }
+.c-rot-angle { font-size: 11px; font-weight: 600; color: #ffcf69; }
+
+/* Rotation controls */
+.rot-controls { margin-top: 12px; padding: 12px; border: 1px solid #2a3d5b; border-radius: 12px; background: #101a2e; }
+.axis-choice { margin: 0; }
+.axis-choice legend { font-size: 13px; color: #9eafc9; margin-bottom: 6px; }
+.axis-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.axis-option { position: relative; display: grid; justify-items: center; gap: 2px; padding: 7px 6px; border: 1px solid #47618d; border-radius: 9px; background: #1c2a42; cursor: pointer; }
+.axis-option input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.axis-option span { font-weight: 700; font-size: 15px; color: #eaf0ff; }
+.axis-option small { font-size: 11px; color: #9eafc9; }
+.axis-option:hover { background: #26385a; }
+.axis-option:has(input:checked) { background: #34558c; border-color: #c4a1ff; box-shadow: 0 0 0 1px #c4a1ff; }
+.axis-option:has(input:focus-visible) { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.angle-control { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 10px; margin-top: 12px; font-size: 14px; color: #dbe6fb; }
+.angle-control input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: #c4a1ff; cursor: pointer; }
+.angle-field { display: inline-flex; align-items: center; gap: 4px; }
+.angle-field input { width: 5.5em; padding: 7px 9px; border: 1px solid #536780; border-radius: 8px; background: #0b1428; color: #eaf0ff; font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
+.angle-field input[aria-invalid="true"] { border-color: #ff8a8a; box-shadow: 0 0 0 1px #ff8a8a; }
+.angle-radians { margin: 4px 0 0; }
+.error { margin: 6px 0 0; font-size: 13px; color: #ffb4b4; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.preset { padding: 5px 9px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.preset[aria-pressed="true"] { border-color: #c4a1ff; background: #34558c; }
+.apply { margin-top: 12px; }
+.rot-controls .apply { padding: 11px; }
+.apply:disabled, .measure:disabled { background: #34425c; color: #a5b3ce; cursor: not-allowed; }
+.rotation-info { margin-top: 12px; }
+.info-head { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 10px; flex-wrap: wrap; }
+.info-head h3 { margin: 4px 0; }
+.axis-tag { font-size: 12px; color: #9eafc9; font-variant-numeric: tabular-nums; }
+.matrix-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; }
+.rotation-info > .formula { margin: 2px 0 8px; font-size: 12px; }
+.info-section { border-top: 1px solid #2c3c56; }
+.info-section summary { cursor: pointer; padding: 8px 0; font-size: 13.5px; font-weight: 600; color: #dbe6fb; }
+.info-section summary:hover { color: #fff; }
+.info-section summary:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.info-section[open] { padding-bottom: 8px; }
+.info-section .info-text, .info-section .hint { margin: 0 0 8px; }
+.info-text { font-size: 13px; line-height: 1.6; color: #a9bedb; }
+.special-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.special-list li { display: grid; gap: 3px; padding-left: 10px; border-left: 2px solid #2c3c56; }
+.case-meaning { font-size: 12.5px; line-height: 1.5; color: #a9bedb; }
+.badge { justify-self: start; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #0b1020; }
+.badge.equal { background: #8fd8a8; }
+.badge.equivalent { background: #c4a1ff; }
+
+/* Facts lists and the Bloch before/after table */
+.facts { display: grid; gap: 4px; margin: 6px 0; font-size: 13px; }
+.facts div { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.facts dt { color: #9eafc9; }
+.facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bloch-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.bloch-table th, .bloch-table td { padding: 6px; border-bottom: 1px solid #283855; text-align: left; vertical-align: top; color: #c9d7ef; }
+.bloch-table thead th { color: #9eafc9; font-weight: 600; font-size: 12px; }
+.bloch-table tbody th { color: #9eafc9; font-weight: 600; }
+
+/* Try it */
+.experiments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 12px; }
+.experiment { border: 1px solid #2a3d5b; border-radius: 12px; padding: 14px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.experiment h3 { margin: 0; }
+.experiment > p { margin: 0; font-size: 13px; line-height: 1.6; color: #a9bedb; }
+.choices { display: grid; gap: 6px; margin-top: 4px; }
+.choices legend { font-size: 13px; font-weight: 600; color: #dbe6fb; margin-bottom: 6px; line-height: 1.5; }
+.choices:disabled { opacity: .6; }
+.choice { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid #2a3d5b; border-radius: 8px; font-size: 13px; color: #c9d7ef; cursor: pointer; }
+.choice:has(input:checked) { border-color: #c4a1ff; background: #1c2a42; }
+.choice input { accent-color: #c4a1ff; margin: 0; }
+.feedback p { font-size: 13px; line-height: 1.6; color: #c9d7ef; margin: 6px 0 0; }
+.verdict { font-weight: 700; }
+.verdict.right { color: #8fd8a8; }
+.verdict.wrong { color: #ffcf69; }
+
+/* Phase lesson */
+.phase-lesson p { font-size: 14px; line-height: 1.65; color: #aebed5; }
+.phase-lesson .formula { font-size: 15px; color: #d9e7ff; margin: 4px 0; }
+.phase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.phase-grid h3 { margin-top: 0; }
+.demo-buttons { margin-top: 14px; }
+
+@media (max-width: 1100px) {
+  .experiments { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 900px) {
+  .right .rotation-panel { grid-column: 1 / -1; }
+}
+@media (max-width: 620px) {
+  .experiments, .phase-grid { grid-template-columns: 1fr; }
+  .demo-buttons .secondary { width: 100%; text-align: left; }
+}

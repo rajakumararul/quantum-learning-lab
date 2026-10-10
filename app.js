@@ -1,9 +1,17 @@
-import {gates, canonical, bloch, angles, probabilities, measure, decompose, matrixVectorSteps} from './quantum.js';
-import {formatComplex, formatReal, formatSum, formatKet, formatStateEquation, formatAngle, formatRadians, formatDegrees} from './format.js';
-import {defaultView, projectBloch} from './projection.js';
-import {emptyCircuit, addGate, addMeasurement, addPreparation, undo, statesOf} from './circuit.js';
+import {canonical, bloch, angles, probabilities, measure, decompose} from './quantum.js';
+import {formatComplex, formatReal, formatKet, formatStateEquation, formatAngle, formatRadians, formatDegrees, formatRotation} from './format.js';
+import {defaultView} from './projection.js';
+import {emptyCircuit, addGate, addRotation, addMeasurement, addPreparation, undo, statesOf, circuitOf} from './circuit.js';
 import {renderCircuit, stepLabel} from './circuit-view.js';
-import {gateInfo, rotateAbout} from './gate-info.js';
+import {gateInfo} from './gate-info.js';
+import {ROTATIONS, rotationAxes} from './rotations.js';
+import {rotationInfo} from './rotation-info.js';
+import {inspectorContent} from './inspector-view.js';
+import {createRotationPanel} from './rotation-panel.js';
+import {createExperiments} from './experiments-view.js';
+import {drawBlochSphere} from './sphere-view.js';
+import {animationFrame, rotationDuration} from './bloch-animation.js';
+import {el, math, matrixNode, vectorText, subscript} from './dom.js';
 
 const $ = (id) => document.getElementById(id);
 const GATES = Object.keys(gateInfo);
@@ -12,47 +20,25 @@ const GATES = Object.keys(gateInfo);
 let circuit = emptyCircuit();
 let selected = 0; // index into statesOf(circuit) currently displayed; 0 = input |0⟩
 let {yaw, pitch} = defaultView, drag = null;
-let shown = null, overlay = null; // state drawn on the sphere, and the optional gate overlay
-
-// ---- Small DOM helpers ----------------------------------------------------------
-// Renders text with e^{...} exponents as superscripts; never parses HTML.
-function math(text) {
-  const fragment = document.createDocumentFragment();
-  String(text).split(/\^\{([^}]*)\}/).forEach((part, i) => fragment.append(i % 2 ? el('sup', {}, part) : document.createTextNode(part)));
-  return fragment;
-}
-function el(tag, attrs = {}, ...children) {
-  const node = document.createElement(tag);
-  for (const [key, value] of Object.entries(attrs)) {
-    if (key === 'class') node.className = value;
-    else if (key === 'style') node.style.cssText = value;
-    else node.setAttribute(key, value);
-  }
-  for (const child of children.flat()) if (child != null) node.append(child instanceof Node ? child : math(child));
-  return node;
-}
-// A bracketed matrix or column vector; rows is an array of arrays of display strings.
-function matrixNode(rows, prefactor = '') {
-  const grid = el('span', {class: 'mat', style: `--cols:${rows[0].length}`}, rows.flat().map((entry) => el('span', {}, entry)));
-  return el('span', {class: 'mat-wrap'}, prefactor ? el('span', {class: 'prefactor'}, prefactor) : null, grid);
-}
-const columnVector = ([a, b]) => matrixNode([[formatComplex(a)], [formatComplex(b)]]);
-const vectorText = ({x, y, z}) => `(${formatReal(x)}, ${formatReal(y)}, ${formatReal(z)})`;
-const wrapParens = (text) => (text.startsWith('(') ? text : `(${text})`);
-const subscript = (k) => String(k).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[d]);
+let shown = null, overlay = null; // state drawn on the sphere, and the optional step overlay
+// Visual-only animation of the latest step: {from, to, axis, angle, duration, start}. It never changes
+// `circuit` or `shown`; when it ends (or is cancelled) the sphere shows bloch(shown) exactly.
+let animation = null;
+const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
 // ---- Actions ----------------------------------------------------------------------
 // Every change to the circuit jumps the display to the latest step.
-function commit(next, {syncSliders = true} = {}) {
+function commit(next, {syncSliders = true, animate = false} = {}) {
   circuit = next;
   selected = circuit.steps.length;
   render({syncSliders});
+  if (animate) startAnimation();
 }
 
 for (const gate of GATES) {
   const button = el('button', {'aria-label': `Apply ${gate} gate`, title: gateInfo[gate].title}, gate);
   button.addEventListener('click', () => {
-    commit(addGate(circuit, gate));
+    commit(addGate(circuit, gate), {animate: true});
     $('gateInfo').textContent = gateInfo[gate].summary;
     $('measurementResult').textContent = 'Apply more gates or measure this state.';
   });
@@ -70,6 +56,24 @@ $('clear').addEventListener('click', () => {
   commit(emptyCircuit());
   $('gateInfo').textContent = 'Circuit cleared. The qubit is back at the north pole |0⟩.';
   $('measurementResult').textContent = 'Measurement results appear here. Measuring collapses the state.';
+});
+
+createRotationPanel({
+  onApply(gate, theta) {
+    commit(addRotation(circuit, gate, theta), {animate: true});
+    $('gateInfo').textContent = `${formatRotation(gate, theta)} rotates the Bloch vector by ${formatDegrees(theta)} about ${rotationInfo[gate].axisLabel}. See the inspector below for the full calculation.`;
+    $('measurementResult').textContent = 'Apply more gates or measure this state.';
+  },
+});
+
+createExperiments({
+  container: $('experiments'),
+  demoContainer: $('phaseDemos'),
+  load(steps, {animate = false} = {}) {
+    commit(circuitOf(steps), {animate});
+    $('gateInfo').textContent = 'Experiment loaded. The circuit and history show its steps; select any step to inspect it.';
+    $('measurementResult').textContent = 'Apply more gates or measure this state.';
+  },
 });
 
 for (const id of ['theta', 'phi']) {
@@ -110,6 +114,7 @@ $('showLatest').addEventListener('click', () => select(circuit.steps.length));
 
 // ---- Rendering ----------------------------------------------------------------
 function render({syncSliders = true} = {}) {
+  animation = null; // any re-render shows the exact state immediately
   const states = statesOf(circuit), n = circuit.steps.length;
   selected = Math.min(selected, n);
   const state = states[selected], step = circuit.steps[selected - 1], before = selected > 0 ? states[selected - 1] : null;
@@ -120,9 +125,18 @@ function render({syncSliders = true} = {}) {
   renderInspector(step, before, state);
 
   shown = state;
-  overlay = before && step.type !== 'prepare' ? {from: bloch(before), gate: step.type === 'gate' ? gateInfo[step.gate] : null} : null;
-  $('sphereLegend').hidden = !overlay?.gate;
+  overlay = overlayFor(step, before);
+  $('sphereLegend').hidden = !overlay?.axis;
   draw();
+}
+
+// What the sphere shows for the selected step: the state before it and, for any unitary, its rotation.
+function overlayFor(step, before) {
+  if (!before || step.type === 'prepare') return null;
+  const from = bloch(before);
+  if (step.type === 'gate') return {from, axis: gateInfo[step.gate].axis, angle: gateInfo[step.gate].angle, label: `${step.gate} axis`};
+  if (step.type === 'rotation') return {from, axis: rotationAxes[step.gate], angle: step.theta, label: `${rotationInfo[step.gate].axisName} axis (${step.gate})`};
+  return {from};
 }
 
 function renderState(state, syncSliders) {
@@ -174,7 +188,7 @@ function renderCircuitPanel(states) {
     : selected === n ? `${n} step${n === 1 ? '' : 's'} · showing the latest state`
     : `Inspecting step ${selected} of ${n}`;
 
-  const label = (step) => step.type === 'gate' ? `${step.gate} gate` : step.type === 'measure' ? `Measure → ${step.outcome}` : 'Prepare';
+  const label = (step) => step.type === 'gate' ? `${step.gate} gate` : step.type === 'rotation' ? formatRotation(step.gate, step.theta) : step.type === 'measure' ? `Measure → ${step.outcome}` : 'Prepare';
   $('history').replaceChildren(...states.map((s, k) => el('li', {},
     el('button', {type: 'button', 'data-step': k, ...(k === selected ? {'aria-current': 'step'} : {})},
       el('span', {class: 'h-index'}, k === 0 ? 'Start' : `${k}`),
@@ -183,165 +197,58 @@ function renderCircuitPanel(states) {
 }
 
 function renderInspector(step, before, after) {
-  const box = $('inspector');
+  const {title, nodes} = inspectorContent(step, before, after, selected);
   $('inspectorStep').textContent = step ? `Step ${selected}: ${stepLabel(step)}` : '';
-  if (!step) {
-    $('inspectorTitle').textContent = 'Gate inspector';
-    box.replaceChildren(el('p', {class: 'explanation'}, 'The circuit starts in |ψ₀⟩ = |0⟩ = (1, 0). Apply a gate, or select one in the circuit, to see its matrix, the matrix–vector multiplication step by step, and how it moves the Bloch vector.'));
-    return;
-  }
-  const kIn = subscript(selected - 1), kOut = subscript(selected);
-  const phaseLine = () => {
-    const p = decompose(before), q = decompose(after);
-    const phi = (d) => (d.phiDefined ? formatRadians(d.phi) : 'undefined');
-    return el('p', {class: 'phase-change'},
-      el('span', {class: 'tag relative'}, 'relative φ'), ` ${phi(p)} → ${phi(q)} (observable) `,
-      el('br'),
-      el('span', {class: 'tag global'}, 'global γ'), ` ${formatRadians(p.gamma)} → ${formatRadians(q.gamma)} (unobservable)`);
-  };
-
-  if (step.type === 'prepare') {
-    $('inspectorTitle').textContent = 'State preparation';
-    box.replaceChildren(
-      el('p', {class: 'explanation'}, 'The sliders prepare a new state directly instead of applying a gate. This is not a unitary applied to the previous state: the old state is replaced.'),
-      el('p', {class: 'formula'}, `|ψ${kOut}⟩ = cos(θ/2) |0⟩ + e^{iφ} sin(θ/2) |1⟩ with θ = ${formatAngle(step.theta)}, φ = ${formatAngle(step.phi)}`),
-      el('p', {class: 'formula'}, `|ψ${kOut}⟩ = ${formatKet(after[0], after[1])}`));
-    return;
-  }
-
-  if (step.type === 'measure') {
-    const m = step.outcome, p = probabilities(before)[m];
-    $('inspectorTitle').textContent = 'Measurement (computational basis)';
-    box.replaceChildren(
-      el('p', {class: 'explanation'}, `Outcome ${m} occurred with probability P(${m}) = |${m ? 'β' : 'α'}|² = ${(p * 100).toFixed(1)}%. The state collapses to |${m}⟩. Measurement is not a unitary gate: it applies the projector |${m}⟩⟨${m}| and renormalizes, so it cannot be reversed physically (Undo here just edits the circuit).`),
-      el('div', {class: 'matrix-eq'}, `P${subscript(m)} = |${m}⟩⟨${m}| =`, matrixNode(m ? [['0', '0'], ['0', '1']] : [['1', '0'], ['0', '0']])),
-      el('p', {class: 'formula'}, `|ψ${kIn}⟩ = ${formatKet(before[0], before[1])}  →  |ψ${kOut}⟩ = |${m}⟩`));
-    return;
-  }
-
-  const info = gateInfo[step.gate], matrix = gates[step.gate];
-  $('inspectorTitle').textContent = `${step.gate} · ${info.title}`;
-  const rows = matrixVectorSteps(matrix, before).map((row, i) => {
-    const name = i ? 'β′' : 'α′';
-    return el('li', {},
-      el('span', {class: 'formula'}, `${name} = ${step.gate}${subscript(i)}${subscript(0)}·α + ${step.gate}${subscript(i)}${subscript(1)}·β`),
-      el('span', {class: 'formula'}, `= ${wrapParens(formatComplex(row.entries[0]))}${wrapParens(formatComplex(row.inputs[0]))} + ${wrapParens(formatComplex(row.entries[1]))}${wrapParens(formatComplex(row.inputs[1]))}`),
-      el('span', {class: 'formula'}, `= ${formatSum(row.products[0], row.products[1])}`),
-      el('strong', {class: 'formula'}, `= ${formatComplex(row.result)}`));
-  });
-  const vIn = bloch(before), vOut = bloch(after);
-  box.replaceChildren(
-    el('p', {class: 'explanation'}, info.detail),
-    el('div', {class: 'inspector-grid'},
-      el('div', {},
-        el('h3', {}, 'Matrix–vector multiplication'),
-        el('div', {class: 'matrix-eq'}, `${step.gate} |ψ${kIn}⟩ =`, matrixNode(info.matrix, info.prefactor), columnVector(before), '=', columnVector(after)),
-        el('ol', {class: 'steps'}, rows),
-        el('p', {class: 'hint'}, `Input |ψ${kIn}⟩ = ${formatKet(before[0], before[1])}. Output |ψ${kOut}⟩ = ${formatKet(after[0], after[1])}.`)),
-      el('div', {},
-        el('h3', {}, 'Effect on the Bloch sphere'),
-        el('p', {}, `A rotation of ${formatDegrees(info.angle)} about ${info.axisLabel} (right-hand rule), drawn in violet on the sphere.`),
-        el('p', {class: 'formula'}, info.blochMap),
-        el('p', {class: 'formula'}, `${vectorText(vIn)} → ${vectorText(vOut)}`),
-        el('h3', {}, 'In Dirac notation'),
-        el('p', {class: 'formula'}, info.dirac),
-        el('h3', {}, 'Phases'),
-        phaseLine())));
+  $('inspectorTitle').textContent = title;
+  $('inspector').replaceChildren(...nodes);
 }
 
 function renderReference() {
-  $('gateReference').replaceChildren(...GATES.map((g) => {
-    const info = gateInfo[g];
-    return el('tr', {},
-      el('th', {scope: 'row'}, el('span', {class: 'ref-gate'}, g), el('small', {}, info.title)),
-      el('td', {}, matrixNode(info.matrix, info.prefactor)),
-      el('td', {}, `${formatDegrees(info.angle)} about ${info.axisLabel}`),
-      el('td', {class: 'formula'}, info.blochMap),
-      el('td', {class: 'formula'}, info.dirac),
-      el('td', {}, info.detail));
-  }));
+  const row = (name, title, matrix, prefactor, rotation, blochMap, dirac, detail) => el('tr', {},
+    el('th', {scope: 'row'}, el('span', {class: 'ref-gate'}, name), el('small', {}, title)),
+    el('td', {}, matrixNode(matrix, prefactor)),
+    el('td', {}, rotation),
+    el('td', {class: 'formula'}, blochMap),
+    el('td', {class: 'formula'}, dirac),
+    el('td', {}, detail));
+  $('gateReference').replaceChildren(
+    ...GATES.map((g) => {
+      const info = gateInfo[g];
+      return row(g, info.title, info.matrix, info.prefactor, `${formatDegrees(info.angle)} about ${info.axisLabel}`, info.blochMap, info.dirac, info.detail);
+    }),
+    ...ROTATIONS.map((g) => {
+      const info = rotationInfo[g];
+      return row(`${g}`, `${info.title} (θ)`, info.matrix, '', `θ about ${info.axisLabel}`, info.blochMap, info.dirac, info.geometry);
+    }));
 }
 
 // ---- Bloch sphere drawing ------------------------------------------------------------
-const canvas = $('sphere'), ctx = canvas.getContext('2d');
-const OVERLAY_COLOR = '#c4a1ff';
+const canvas = $('sphere');
 
-function draw() {
-  const W = canvas.width, H = canvas.height, cx = W / 2, cy = H / 2, r = Math.min(W, H) * .365;
-  ctx.clearRect(0, 0, W, H);
-  const project = (v) => {
-    const p = projectBloch(v, yaw, pitch);
-    return {x: cx + r * p.right, y: cy - r * p.up, depth: p.depth};
+function draw(now = performance.now()) {
+  let vector = bloch(shown), progress = 1;
+  if (animation) {
+    const frame = animationFrame(animation, now - animation.start);
+    vector = frame.vector; progress = frame.progress;
+    if (frame.done) animation = null; // frame.vector is then exactly bloch(shown)
+  }
+  drawBlochSphere(canvas, {yaw, pitch, vector, overlay: overlay && {...overlay, progress}});
+  const step = circuit.steps[selected - 1];
+  canvas.setAttribute('aria-label', `Bloch sphere. State vector at (x, y, z) = ${vectorText(bloch(shown))}.${overlay?.axis ? ` Selected step: ${stepLabel(step)}. The rotation axis and path are drawn in violet.` : ''}`);
+}
+
+// Animates the latest step's rotation from the previous Bloch vector. Skipped under prefers-reduced-motion,
+// where the static axis and path overlay still show the transformation.
+function startAnimation() {
+  if (!overlay?.axis || Math.abs(overlay.angle) < 1e-9 || reduceMotion()) return;
+  animation = {from: overlay.from, to: bloch(shown), axis: overlay.axis, angle: overlay.angle, duration: rotationDuration(overlay.angle), start: performance.now()};
+  const tick = (now) => {
+    if (!animation) return;
+    draw(now);
+    if (animation) requestAnimationFrame(tick);
   };
-  const O = {x: 0, y: 0, z: 0}, origin = project(O);
-  function line(a, b, color, width = 1.4, dash = []) {
-    const A = project(a), B = project(b);
-    ctx.beginPath(); ctx.setLineDash(dash); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
-    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); ctx.setLineDash([]);
-  }
-  function dot(p, radius, color, alpha = 1) {
-    ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.globalAlpha = alpha; ctx.fill(); ctx.globalAlpha = 1;
-  }
-
-  const glow = ctx.createRadialGradient(cx - r * .3, cy - r * .4, r * .05, cx, cy, r);
-  glow.addColorStop(0, 'rgba(76,129,245,.21)'); glow.addColorStop(1, 'rgba(76,129,245,.045)');
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fillStyle = glow; ctx.fill(); ctx.strokeStyle = '#5174ab'; ctx.lineWidth = 2; ctx.stroke();
-
-  // Arcs on the far hemisphere are dashed and dimmed so the viewer can tell front from back (and hence handedness).
-  function circle(plane, color) {
-    const points = [];
-    for (let i = 0; i <= 180; i++) points.push(project(plane(i * 2 * Math.PI / 180)));
-    ctx.strokeStyle = color; ctx.lineWidth = 1.35;
-    for (const back of [true, false]) {
-      ctx.setLineDash(back ? [4, 5] : []); ctx.globalAlpha = back ? .45 : 1; ctx.beginPath();
-      for (let i = 1; i < points.length; i++) {
-        if ((points[i - 1].depth + points[i].depth < 0) !== back) continue;
-        ctx.moveTo(points[i - 1].x, points[i - 1].y); ctx.lineTo(points[i].x, points[i].y);
-      }
-      ctx.stroke();
-    }
-    ctx.setLineDash([]); ctx.globalAlpha = 1;
-  }
-  circle((t) => ({x: Math.cos(t), y: Math.sin(t), z: 0}), '#4971a6');
-  circle((t) => ({x: Math.cos(t), y: 0, z: Math.sin(t)}), '#355980');
-  circle((t) => ({x: 0, y: Math.cos(t), z: Math.sin(t)}), '#355980');
-
-  for (const axis of [{v: {x: 1.2, y: 0, z: 0}, label: '+X'}, {v: {x: 0, y: 1.2, z: 0}, label: '+Y'}, {v: {x: 0, y: 0, z: 1.2}, label: '|0⟩'}, {v: {x: 0, y: 0, z: -1.2}, label: '|1⟩'}]) {
-    line(O, axis.v, '#8099c0', 1.5, [4, 5]);
-    const a = project(axis.v);
-    ctx.fillStyle = '#dbeaff'; ctx.font = 'bold 18px system-ui'; ctx.fillText(axis.label, a.x + 5, a.y - 5);
-  }
-
-  // Overlay for the selected step: the state before it (faded), and for a gate its rotation axis and path.
-  if (overlay) {
-    const {from, gate} = overlay;
-    if (gate) {
-      const [ux, uy, uz] = gate.axis;
-      line({x: -1.25 * ux, y: -1.25 * uy, z: -1.25 * uz}, {x: 1.25 * ux, y: 1.25 * uy, z: 1.25 * uz}, OVERLAY_COLOR, 2, [8, 6]);
-    }
-    line(O, from, 'rgba(255,207,105,.38)', 3);
-    dot(project(from), 6, '#ffcf69', .4);
-    if (gate) {
-      const path = [];
-      for (let i = 0; i <= 48; i++) path.push(project(rotateAbout(from, gate.axis, gate.angle * i / 48)));
-      ctx.beginPath(); path.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-      ctx.strokeStyle = OVERLAY_COLOR; ctx.lineWidth = 2.5; ctx.stroke();
-      const [p1, p2] = path.slice(-2), angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-      if (Math.hypot(p2.x - p1.x, p2.y - p1.y) > .3) {
-        ctx.beginPath(); ctx.moveTo(p2.x, p2.y);
-        ctx.lineTo(p2.x - 13 * Math.cos(angle - .45), p2.y - 13 * Math.sin(angle - .45));
-        ctx.lineTo(p2.x - 13 * Math.cos(angle + .45), p2.y - 13 * Math.sin(angle + .45));
-        ctx.closePath(); ctx.fillStyle = OVERLAY_COLOR; ctx.fill();
-      }
-    }
-  }
-
-  const vector = bloch(shown);
-  line(O, vector, '#ffcf69', 5);
-  const end = project(vector);
-  dot(end, 8, '#ffcf69', end.depth < -1e-9 ? .55 : 1);
-  dot(origin, 3, '#cad9ff');
-  canvas.setAttribute('aria-label', `Bloch sphere. State vector at (x, y, z) = ${vectorText(vector)}.`);
+  draw();
+  requestAnimationFrame(tick);
 }
 
 canvas.addEventListener('pointerdown', (e) => { drag = {x: e.clientX, y: e.clientY, yaw, pitch}; canvas.setPointerCapture(e.pointerId); });

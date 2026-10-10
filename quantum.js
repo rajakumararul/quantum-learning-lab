@@ -16,7 +16,9 @@ export const gates={
  S:[[C(1),C(0)],[C(0),C(0,1)]],
  T:[[C(1),C(0)],[C(0),C(SQ,SQ)]]
 };
-export function applyGate(state,name){const m=gates[name];if(!m)throw Error('Unsupported gate '+name);return [add(mul(m[0][0],state[0]),mul(m[0][1],state[1])),add(mul(m[1][0],state[0]),mul(m[1][1],state[1]))]}
+// Matrix-vector product U|psi> for any 2x2 complex matrix.
+export function applyMatrix(state,m){return [add(mul(m[0][0],state[0]),mul(m[0][1],state[1])),add(mul(m[1][0],state[0]),mul(m[1][1],state[1]))]}
+export function applyGate(state,name){const m=gates[name];if(!m)throw Error('Unsupported gate '+name);return applyMatrix(state,m)}
 // A canonical representative removes unobservable global phase.
 export function canonical(state){const [a,b]=state;const pivot=abs2(a)>1e-15?a:b;const length=Math.sqrt(abs2(pivot));const conjugate=C(pivot.re/length,-pivot.im/length);return [mul(a,conjugate),mul(b,conjugate)]}
 // Floating-point trig leaves residues such as cos(pi/2) = 6.1e-17; snap them to exact zero
@@ -37,3 +39,8 @@ export function decompose(state){const [a,b]=state,ra=Math.sqrt(abs2(a)),rb=Math
 export function matrixVectorSteps(matrix,state){return matrix.map(row=>{const products=[mul(row[0],state[0]),mul(row[1],state[1])];return {entries:row,inputs:state,products,result:add(products[0],products[1])}})}
 // Computational-basis measurement. `random` is a uniform sample in [0,1); passing it in keeps this testable.
 export function measure(state,random=Math.random()){const outcome=random<probabilities(state)[0]?0:1;return {outcome,state:basisState(outcome)}}
+// Inner product <u|v> = conj(u0) v0 + conj(u1) v1.
+export function inner(u,v){return add(mul(C(u[0].re,-u[0].im),v[0]),mul(C(u[1].re,-u[1].im),v[1]))}
+// For normalized states, |<u|v>| = 1 exactly when v = e^{i gamma} u: the same physical state.
+// Returns that factor e^{i gamma} (so v = factor * u), or null when the states differ physically.
+export function globalPhaseFactor(u,v,eps=1e-9){const c=inner(u,v);return Math.abs(Math.sqrt(abs2(c))-1)<eps?c:null}
