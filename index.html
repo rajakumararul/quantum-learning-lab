@@ -6,18 +6,19 @@
   <meta name="theme-color" content="#101827">
   <meta name="description" content="Interactive single-qubit Bloch sphere educational simulator">
   <title>Quantum Learning Lab | Bloch Sphere</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header>
     <div class="logo">◉ <strong>Quantum Learning Lab</strong></div>
-    <span class="eyebrow">Single-qubit laboratory · v0.2</span>
+    <span class="eyebrow">Single-qubit laboratory · v0.3</span>
   </header>
   <main>
     <section class="intro">
       <span class="eyebrow">INTERACTIVE LEARNING</span>
       <h1>Explore a qubit, one gate at a time.</h1>
-      <p>Apply quantum gates, rotate the state, and observe the Bloch vector, amplitudes, and measurement probabilities update together.</p>
+      <p>Apply quantum gates and parameterized rotations Rx(θ), Ry(θ), Rz(θ), and observe the Bloch vector, amplitudes, and measurement probabilities update together.</p>
     </section>
 
     <div class="layout">
@@ -26,7 +27,7 @@
           <div class="panelhead"><h2>Bloch sphere</h2><span id="angles">θ = 0° · φ = 0°</span></div>
           <canvas id="sphere" width="720" height="560" role="img" aria-label="Bloch sphere with coordinate axes and a quantum state vector"></canvas>
           <p class="hint">Drag to orbit the visualization. The orientation does not change the quantum state.</p>
-          <p class="hint legend" id="sphereLegend" hidden><span class="swatch axis"></span> Rotation axis and path of the selected gate · <span class="swatch ghost"></span> state before it</p>
+          <p class="hint legend" id="sphereLegend" hidden><span class="swatch axis"></span> Rotation axis, sense of rotation and path of the selected step · <span class="swatch ghost"></span> state before it</p>
           <div class="sliders">
             <label>Polar angle θ <strong id="thetaVal">0°</strong><input id="theta" aria-label="Polar angle theta" type="range" min="0" max="180" step="1" value="0"></label>
             <label>Azimuth angle φ <strong id="phiVal">0°</strong><input id="phi" aria-label="Azimuthal angle phi" type="range" min="0" max="360" step="1" value="0"></label>
@@ -58,7 +59,27 @@
         <section class="panel">
           <div class="panelhead"><h2>Quantum gates</h2></div>
           <div class="gates" id="gates"></div>
-          <p id="gateInfo" class="explanation">Start in |0⟩. Apply H to create an equal superposition.</p>
+          <p id="gateInfo" class="explanation" aria-live="polite">Start in |0⟩. Apply H to create an equal superposition.</p>
+        </section>
+
+        <section class="panel rotation-panel" aria-labelledby="rotationHeading">
+          <div class="panelhead"><h2 id="rotationHeading">Rotation gates</h2><span>Rx(θ) · Ry(θ) · Rz(θ)</span></div>
+          <div class="rot-controls" role="group" aria-label="Rotation controls">
+            <fieldset class="axis-choice">
+              <legend>Rotation axis</legend>
+              <div class="axis-options" id="rotAxes"></div>
+            </fieldset>
+            <div class="angle-control">
+              <label for="rotAngle">Rotation angle θ</label>
+              <span class="angle-field"><input id="rotAngle" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="90" aria-describedby="rotAngleRadians rotAngleError"><span aria-hidden="true">°</span></span>
+              <input id="rotSlider" type="range" min="0" max="360" step="any" value="90" aria-label="Rotation angle θ in degrees" aria-describedby="rotAngleRadians">
+            </div>
+            <p class="hint angle-radians" id="rotAngleRadians"></p>
+            <p class="error" id="rotAngleError" aria-live="polite" hidden></p>
+            <div class="presets" id="rotPresets" role="group" aria-label="Preset angles"></div>
+            <button id="applyRotation" class="measure apply" type="button">Apply rotation</button>
+          </div>
+          <div class="rotation-info" id="rotationInfo" role="region" aria-label="About the selected rotation gate"></div>
         </section>
 
         <section class="panel">
@@ -103,9 +124,40 @@
       <div id="inspector"></div>
     </section>
 
+    <section class="panel" aria-labelledby="tryHeading">
+      <h2 id="tryHeading">Try it</h2>
+      <p class="hint">Short guided experiments. Make a prediction first, then check it against the simulation.</p>
+      <div class="experiments" id="experiments"></div>
+    </section>
+
+    <section class="panel phase-lesson" aria-labelledby="phaseHeading">
+      <h2 id="phaseHeading">Global phase and relative phase</h2>
+      <div class="phase-grid">
+        <div class="phase global">
+          <h3>Global phase: not observable</h3>
+          <p class="formula">e<sup>iγ</sup>|ψ⟩ ≃ |ψ⟩</p>
+          <p>Multiplying the <em>whole</em> state by e<sup>iγ</sup> changes nothing physical. Every probability is |e<sup>iγ</sup>α|² = |α|², and the Bloch coordinates depend only on α*β and |α|², |β|², in which the factor cancels. So e<sup>iγ</sup>|ψ⟩ and |ψ⟩ are the <em>same physical state</em>, even though they are different vectors. We write “≃” for this equivalence and keep “=” for exact equality.</p>
+        </div>
+        <div class="phase relative">
+          <h3>Relative phase: observable</h3>
+          <p class="formula">α|0⟩ + e<sup>iφ</sup>β|1⟩</p>
+          <p>A phase on <em>one</em> amplitude only is different. It leaves P(0) and P(1) unchanged, but it is the Bloch azimuth φ and it changes interference. For example H(|0⟩ + e<sup>iφ</sup>|1⟩)/√2 gives P(0) = cos²(φ/2): 100% for φ = 0, 50% for φ = 90°, 0% for φ = 180°.</p>
+        </div>
+      </div>
+      <h3>Rz separates the two</h3>
+      <p class="formula">Rz(φ) = e<sup>−iφ/2</sup> · diag(1, e<sup>iφ</sup>)</p>
+      <p>Rz(φ)(α|0⟩ + β|1⟩) = e<sup>−iφ/2</sup> (α|0⟩ + e<sup>iφ</sup>β|1⟩). The factor e<sup>−iφ/2</sup> in front is a global phase and is invisible; the factor e<sup>iφ</sup> on |1⟩ is a relative phase and turns the Bloch vector by φ about Z.</p>
+      <h3>Why Rz(φ)|0⟩ does not move the Bloch vector</h3>
+      <p>Rz(φ)|0⟩ = e<sup>−iφ/2</sup>|0⟩. The state vector really does change (its amplitude acquires the phase e<sup>−iφ/2</sup>), but β = 0, so there is no second amplitude for a <em>relative</em> phase to act on: the only change is a global phase. Geometrically, |0⟩ is the north pole, which lies on the Z axis, and a rotation never moves points on its own axis. Compare Rz(φ)|+⟩, where the vector moves around the equator.</p>
+      <h3>Why a 2π rotation gives −|ψ⟩</h3>
+      <p>The rotation matrices depend on θ/2: R<sub>n</sub>(θ) = cos(θ/2) I − i sin(θ/2) n·σ. At θ = 2π this is cos(π) I − i sin(π) n·σ = −I, so R<sub>n</sub>(2π)|ψ⟩ = −|ψ⟩ = e<sup>iπ</sup>|ψ⟩. That is a global phase π: the probabilities and the Bloch vector are exactly as before, so it is the same physical state, but not the same vector. The state vector itself returns to +|ψ⟩ only after 4π. (Within this single-qubit lab the sign is unobservable; it can become observable when a rotation is applied conditionally, controlled by another qubit.)</p>
+      <div class="tools demo-buttons" id="phaseDemos" role="group" aria-label="Phase demonstrations"></div>
+      <p class="hint">Each demonstration replaces the current circuit. Watch the state vector, the global phase γ and the relative phase φ in the State vector panel.</p>
+    </section>
+
     <section class="panel">
       <h2>Gate reference</h2>
-      <p class="hint">Each gate is a 2×2 unitary matrix acting on (α, β), and a rotation of the Bloch sphere (up to an unobservable global phase).</p>
+      <p class="hint">Each gate is a 2×2 unitary matrix acting on (α, β), and a rotation of the Bloch sphere (up to an unobservable global phase). Rx, Ry and Rz take an angle θ in radians.</p>
       <div class="table-scroll">
         <table class="reference">
           <thead><tr><th scope="col">Gate</th><th scope="col">Matrix</th><th scope="col">Bloch rotation</th><th scope="col">Bloch coordinates</th><th scope="col">Amplitudes</th><th scope="col">What it does</th></tr></thead>
@@ -118,6 +170,7 @@
       <h2>What are you seeing?</h2>
       <p>Every pure single-qubit state maps to a point on the Bloch sphere. The north pole is |0⟩, the south pole is |1⟩, and equatorial states are equal-probability superpositions. The vector encodes the relative phase as well as the measurement probabilities.</p>
       <p>Try <strong>H → S</strong> and observe the rotation from the +X direction to the +Y direction. Try <strong>H → T → T</strong> for the same effect. You can also change θ and φ directly using the sliders.</p>
+      <p>For the parameterized rotations, try <strong>Ry(90°)</strong> from |0⟩ (the same state as H|0⟩), then <strong>Rz(90°)</strong>, and finally <strong>Rx(360°)</strong>: the Bloch vector returns, while the state vector picks up a factor −1.</p>
       <p>Then try <strong>Y</strong> from |0⟩: the gate inspector shows Y|0⟩ = i|1⟩. The factor i is a <em>global</em> phase. It appears in the state vector, but the Bloch vector and probabilities are exactly those of |1⟩. Compare with <strong>H → Z</strong>, where the minus sign is a <em>relative</em> phase that moves the Bloch vector from +X to −X.</p>
     </section>
   </main>
