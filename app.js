@@ -12,6 +12,7 @@ import {createExperiments} from './experiments-view.js';
 import {drawBlochSphere} from './sphere-view.js';
 import {animationFrame, rotationDuration} from './bloch-animation.js';
 import {el, math, matrixNode, vectorText, subscript} from './dom.js';
+import {createTwoQubitMode} from './two-qubit-app.js';
 
 const $ = (id) => document.getElementById(id);
 const GATES = Object.keys(gateInfo);
@@ -263,3 +264,25 @@ canvas.addEventListener('pointercancel', () => { drag = null; });
 
 renderReference();
 render();
+
+// ---- Mode selection ----------------------------------------------------------------
+// The two modes keep separate circuits. Entering a mode starts it fresh (|0⟩ or |00⟩), so no history
+// is ever carried between a one-qubit and a two-qubit circuit. #two-qubits in the URL opens two-qubit mode.
+const twoQubit = createTwoQubitMode();
+function setMode(mode) {
+  const two = mode === 'two';
+  $('singleMode').hidden = two;
+  $('twoMode').hidden = !two;
+  $('modeSingle').checked = !two;
+  $('modeTwo').checked = two;
+  if (two) twoQubit.reset();
+  else {
+    commit(emptyCircuit());
+    $('gateInfo').textContent = 'Single-qubit mode: the qubit starts in |0⟩. Apply H to create an equal superposition.';
+    $('measurementResult').textContent = 'Measurement results appear here. Measuring collapses the state.';
+  }
+  try { history.replaceState(null, '', two ? '#two-qubits' : location.pathname + location.search); } catch { /* file:// or sandboxed */ }
+}
+$('modeSingle').addEventListener('change', () => setMode('single'));
+$('modeTwo').addEventListener('change', () => setMode('two'));
+if (location.hash === '#two-qubits') setMode('two');

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#101827">
-  <meta name="description" content="Interactive single-qubit Bloch sphere educational simulator">
+  <meta name="description" content="Interactive one- and two-qubit quantum computing simulator: Bloch sphere, gates, rotations, controlled gates and entanglement">
   <title>Quantum Learning Lab | Bloch Sphere</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -12,14 +12,25 @@
 <body>
   <header>
     <div class="logo">◉ <strong>Quantum Learning Lab</strong></div>
-    <span class="eyebrow">Single-qubit laboratory · v0.3</span>
+    <span class="eyebrow">Quantum laboratory · v0.4</span>
   </header>
   <main>
     <section class="intro">
       <span class="eyebrow">INTERACTIVE LEARNING</span>
       <h1>Explore a qubit, one gate at a time.</h1>
-      <p>Apply quantum gates and parameterized rotations Rx(θ), Ry(θ), Rz(θ), and observe the Bloch vector, amplitudes, and measurement probabilities update together.</p>
+      <p>Apply quantum gates and parameterized rotations Rx(θ), Ry(θ), Rz(θ), and observe the Bloch vector, amplitudes, and measurement probabilities update together. Switch to two qubits to explore controlled gates and entanglement.</p>
     </section>
+
+    <div class="mode-bar">
+      <fieldset class="mode-switch">
+        <legend>Simulator mode</legend>
+        <label class="mode-option"><input type="radio" name="mode" value="single" id="modeSingle" checked><span>Single qubit</span><small>Bloch sphere · gates · rotations</small></label>
+        <label class="mode-option"><input type="radio" name="mode" value="two" id="modeTwo"><span>Two qubits</span><small>Controlled gates · entanglement</small></label>
+      </fieldset>
+      <p class="hint" id="modeNote">Switching mode starts a fresh circuit in that mode: |0⟩ for one qubit, |00⟩ for two.</p>
+    </div>
+
+    <div id="singleMode">
 
     <div class="layout">
       <div class="left">
@@ -173,6 +184,123 @@
       <p>For the parameterized rotations, try <strong>Ry(90°)</strong> from |0⟩ (the same state as H|0⟩), then <strong>Rz(90°)</strong>, and finally <strong>Rx(360°)</strong>: the Bloch vector returns, while the state vector picks up a factor −1.</p>
       <p>Then try <strong>Y</strong> from |0⟩: the gate inspector shows Y|0⟩ = i|1⟩. The factor i is a <em>global</em> phase. It appears in the state vector, but the Bloch vector and probabilities are exactly those of |1⟩. Compare with <strong>H → Z</strong>, where the minus sign is a <em>relative</em> phase that moves the Bloch vector from +X to −X.</p>
     </section>
+    </div>
+
+    <div id="twoMode" hidden>
+      <div class="layout">
+        <div class="left">
+          <section class="panel" aria-labelledby="tqCircuitHeading">
+            <div class="panelhead">
+              <h2 id="tqCircuitHeading">Two-qubit circuit</h2>
+              <div class="tools">
+                <button id="tqUndo" class="secondary" type="button" title="Undo the last step">↶ Undo last step</button>
+                <button id="tqClear" class="secondary" type="button" title="Remove every step and reset to |00⟩">↺ Clear circuit</button>
+              </div>
+            </div>
+            <div class="circuit-scroll" id="tqCircuit" role="group" aria-label="Two-qubit circuit with wires q0 (top) and q1 (bottom). Select a step to inspect it; arrow keys move between steps."></div>
+            <div class="circuit-status">
+              <span id="tqStatus">Input |00⟩ · no gates yet</span>
+              <button id="tqShowLatest" class="link" type="button" hidden>Show latest →</button>
+            </div>
+            <details class="history-wrap" open>
+              <summary>History</summary>
+              <ol class="history" id="tqHistory"></ol>
+            </details>
+            <p class="footnote">Basis order: |q0 q1⟩, so |10⟩ means q0 = 1 and q1 = 0. Amplitudes are listed as α|00⟩ + β|01⟩ + γ|10⟩ + δ|11⟩, and a gate on q0 acts as U ⊗ I, on q1 as I ⊗ U.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="tqReducedHeading">
+            <h2 id="tqReducedHeading">Each qubit on its own</h2>
+            <p class="hint">A two-qubit state cannot be drawn on one Bloch sphere. Each sphere below shows one qubit's <strong>reduced state</strong> ρ₀ = Tr₁(|ψ⟩⟨ψ|) or ρ₁ = Tr₀(|ψ⟩⟨ψ|), with Bloch vector (Tr ρX, Tr ρY, Tr ρZ). It describes that qubit alone, not the whole system: correlations between the qubits are not shown. An entangled qubit's vector shrinks inside the sphere; for a Bell state it sits at the centre.</p>
+            <div class="reduced-grid">
+              <figure>
+                <canvas id="tqSphere0" class="mini-sphere" width="360" height="300" role="img" aria-label="Reduced Bloch vector of q0"></canvas>
+                <figcaption><strong>q0</strong></figcaption>
+                <div id="tqReduced0"></div>
+              </figure>
+              <figure>
+                <canvas id="tqSphere1" class="mini-sphere" width="360" height="300" role="img" aria-label="Reduced Bloch vector of q1"></canvas>
+                <figcaption><strong>q1</strong></figcaption>
+                <div id="tqReduced1"></div>
+              </figure>
+            </div>
+          </section>
+        </div>
+
+        <aside class="right">
+          <section class="panel" aria-labelledby="tqGatesHeading">
+            <h2 id="tqGatesHeading">Gates</h2>
+            <fieldset class="target-choice">
+              <legend>Single-qubit gates act on</legend>
+              <div class="axis-options two">
+                <label class="axis-option" for="tqTarget0"><input type="radio" name="tqTarget" id="tqTarget0" checked><span>q0</span><small>top wire</small></label>
+                <label class="axis-option" for="tqTarget1"><input type="radio" name="tqTarget" id="tqTarget1"><span>q1</span><small>bottom wire</small></label>
+              </div>
+            </fieldset>
+            <div class="gates" id="tqGates"></div>
+            <div class="tq-rotation">
+              <label for="tqRotGate" class="visually-hidden">Rotation gate</label>
+              <select id="tqRotGate"></select>
+              <label for="tqRotAngle" class="visually-hidden">Rotation angle in degrees</label>
+              <span class="angle-field"><input id="tqRotAngle" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="90" aria-describedby="tqRotError"><span aria-hidden="true">°</span></span>
+              <button id="tqRotApply" class="secondary" type="button">Apply rotation</button>
+            </div>
+            <p class="error" id="tqRotError" aria-live="polite" hidden></p>
+            <h3>Two-qubit gates</h3>
+            <div class="gates two-gates" id="tqTwoGates"></div>
+            <h3>Measure</h3>
+            <div class="tools measure-tools">
+              <button id="tqMeasure0" class="secondary" type="button">Measure q0</button>
+              <button id="tqMeasure1" class="secondary" type="button">Measure q1</button>
+              <button id="tqMeasureBoth" class="secondary" type="button">Measure both</button>
+            </div>
+            <p id="tqMeasureResult" class="outcome" aria-live="polite"></p>
+            <p id="tqInfo" class="explanation" aria-live="polite"></p>
+          </section>
+
+          <section class="panel" aria-labelledby="tqStateHeading">
+            <h2 id="tqStateHeading">State vector</h2>
+            <div class="equation" id="tqKet" aria-live="polite"></div>
+            <p class="formula" id="tqKetDecimal"></p>
+            <div class="table-scroll" id="tqAmps"></div>
+          </section>
+
+          <section class="panel" aria-labelledby="tqProbHeading">
+            <h2 id="tqProbHeading">Measurement probabilities</h2>
+            <div id="tqProbs"></div>
+          </section>
+
+          <section class="panel" aria-labelledby="tqEntHeading">
+            <h2 id="tqEntHeading">Entanglement</h2>
+            <div id="tqEntanglement"></div>
+          </section>
+        </aside>
+      </div>
+
+      <section class="panel inspector" aria-labelledby="tqInspectorTitle">
+        <div class="panelhead"><h2 id="tqInspectorTitle">Two-qubit inspector</h2><span id="tqInspectorStep"></span></div>
+        <div id="tqInspector"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="tqBellHeading">
+        <h2 id="tqBellHeading">Bell states</h2>
+        <p class="hint">The four Bell states are the standard maximally entangled two-qubit states (C = 1). Each can be prepared from |00⟩ with a few gates. Preparing one replaces the current circuit.</p>
+        <div class="bell-grid" id="tqBell"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="tqTryHeading">
+        <h2 id="tqTryHeading">Try it</h2>
+        <p class="hint">Make a prediction first, then check it against the simulation.</p>
+        <div class="experiments" id="tqExperiments"></div>
+      </section>
+
+      <section class="panel lesson" aria-labelledby="tqLessonHeading">
+        <h2 id="tqLessonHeading">Product states and entangled states</h2>
+        <p>A two-qubit state is <strong>separable</strong> (a product state) when it can be written as |a⟩ ⊗ |b⟩: one state for q0 and one for q1. Then each qubit has a definite state of its own, both reduced Bloch vectors lie on their sphere's surface, and C = 0. Example: H on q0 gives (|00⟩ + |10⟩)/√2 = |+⟩ ⊗ |0⟩. q0 is in a superposition, but the state is still separable.</p>
+        <p>A state that cannot be written that way is <strong>entangled</strong>. For |ψ⟩ = α|00⟩ + β|01⟩ + γ|10⟩ + δ|11⟩, the test is αδ − βγ: a product (a₀|0⟩ + a₁|1⟩) ⊗ (b₀|0⟩ + b₁|1⟩) always has αδ = a₀b₀a₁b₁ = βγ. The concurrence C = 2|αδ − βγ| therefore measures entanglement: 0 for every product state, 1 for the Bell states.</p>
+        <p>In an entangled state the qubits have no individual states. Each one alone is mixed: its reduced density matrix ρ₀ or ρ₁ is not a pure state, and its Bloch vector lies inside the sphere, with length √(1 − C²). What the qubits do have is <em>correlation</em>: in |Φ+⟩ each qubit alone gives 0 or 1 at random, but the two outcomes always agree. Local gates on one qubit, and SWAP, never change C; a two-qubit gate such as CNOT or CZ can.</p>
+      </section>
+    </div>
   </main>
   <footer>Quantum Learning Lab · Open-source educational prototype · MIT</footer>
   <script type="module" src="app.js"></script>

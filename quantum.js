@@ -1,6 +1,7 @@
 // Pure state-vector operations. Convention |psi> = alpha|0> + beta|1>.
 export const C = (re,im=0)=>({re,im});
 export const add=(a,b)=>C(a.re+b.re,a.im+b.im);
+export const sub=(a,b)=>C(a.re-b.re,a.im-b.im);
 export const mul=(a,b)=>C(a.re*b.re-a.im*b.im,a.re*b.im+a.im*b.re);
 export const scale=(a,s)=>C(a.re*s,a.im*s);
 export const abs2=a=>a.re*a.re+a.im*a.im;

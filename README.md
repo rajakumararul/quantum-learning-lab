@@ -1,5 +1,5 @@
 # Quantum Learning Lab
-A free, client-side, offline-capable-after-download **single-qubit educational simulator**. No account, tracking, backend, or external libraries required.
+A free, client-side, offline-capable-after-download **one- and two-qubit educational simulator**. No account, tracking, backend, or external libraries required.
 
 ## Features
 - Canvas-based orbitable Bloch sphere
@@ -8,18 +8,27 @@ A free, client-side, offline-capable-after-download **single-qubit educational s
 - Animated Bloch-vector rotation showing the active axis, rotation sense and trajectory (respects `prefers-reduced-motion`)
 - Step inspector with the full matrix × state-vector calculation, amplitudes, Bloch coordinates and angles
 - Lessons on global vs relative phase, and guided "Try it" experiments with predictions
+- **Two-qubit mode**: any single-qubit gate or rotation on q0 or q1 (as U ⊗ I or I ⊗ U), CNOT in both directions, CZ and SWAP
+- Two-wire circuit diagram in standard notation (control •, target ⊕, CZ dots, SWAP ×) with history and exact Undo
+- 4×4 matrices, amplitudes α, β, γ, δ with exact forms such as 1/√2, and a probability histogram
+- Entanglement via the concurrence C = 2|αδ − βγ|, reduced density matrices ρ₀ = Tr₁ρ, ρ₁ = Tr₀ρ and their Bloch vectors
+- Guided preparation of the four Bell states and two-qubit experiments (Bell pair, superposition vs entanglement, SWAP, CZ)
 - Theta and phi state preparation controls
 - Live state amplitudes and measurement probabilities
 - Computational-basis measurement with state collapse
 
 ## Local development
-Run a local HTTP server (ES modules may not work when opened directly from the filesystem):
+Requires Node.js 20 or later. There are **no dependencies**, so no `npm install` is needed: the development server uses only Node.js built-in modules.
 
 ```bash
 cd quantum-learning-lab
-python3 -m http.server 8000
+npm run serve            # serves the project at http://localhost:8000
 ```
-Open http://localhost:8000 . Alternatively open the directory using VS Code Live Server.
+Open http://localhost:8000 and press Ctrl+C to stop. Use `npm run serve -- --port 8080` (or `PORT=8080 npm run serve`) for another port.
+
+The page must be served over HTTP, because browsers do not load ES modules from `file://`. The server sends `Cache-Control: no-store`, so edited modules are never served stale, and it never serves hidden files such as `.git`.
+
+Fallback: `python3 -m http.server 8000` also works for small pages, but it is not recommended here. The app loads about 30 modules in parallel, and Python's server can reset some of those connections, which leaves the page blank.
 
 ## Tests
 Unit and mathematical regression tests use Node.js's built-in test runner (Node 20+, no dependencies to install):
@@ -39,10 +48,18 @@ They cover every gate and rotation matrix (unitarity, 2π = −I, exact preset a
 | `gate-info.js`, `rotation-info.js` | Educational reference data, checked against the maths by tests |
 | `transformation.js` | Display-ready description of a rotation step |
 | `experiments.js` | Guided experiments and phase demonstrations (data) |
+| `tensor.js` | Complex n×n linear algebra: Kronecker product, products, adjoint, trace |
+| `multi-qubit.js` | Two-qubit states, basis ordering, U ⊗ I / I ⊗ U operators, measurement |
+| `controlled-gates.js` | CNOT, CZ, SWAP and a generic controlled-U builder (registry for future gates) |
+| `density-matrix.js` | ρ = \|ψ⟩⟨ψ\|, partial traces, reduced Bloch vectors, purity |
+| `entanglement.js` | Concurrence and product-state factorization |
+| `two-qubit-circuit.js`, `two-qubit-format.js`, `two-qubit-experiments.js` | Two-qubit history, formatting, Bell states and experiments |
+| `two-qubit-circuit-view.js`, `two-qubit-view.js`, `two-qubit-app.js` | Two-qubit views and UI wiring |
 | `bloch-animation.js` | Visual-only rotation animation; its last frame is the exact computed state |
 | `projection.js` | Right-handed camera projection for the Bloch sphere |
 | `sphere-view.js`, `circuit-view.js`, `inspector-view.js`, `rotation-panel.js`, `experiments-view.js`, `dom.js` | Views |
 | `app.js` | UI state and wiring |
+| `scripts/serve.mjs` | Zero-dependency local development server (`npm run serve`) |
 | `test/` | `*.test.js` suites and shared helpers |
 
 ## Deploy to GitHub Pages
@@ -57,6 +74,7 @@ There is no build step: the site is plain HTML, CSS, and JavaScript. This is del
 `|ψ⟩=α|0⟩+β|1⟩` with |α|²+|β|²=1.
 Bloch vector: `x=2 Re(α*β), y=2 Im(α*β), z=|α|²−|β|²`. State displays remove an unobservable global phase. The measurement button samples and collapses the state.
 Rotations: `R_n(θ) = cos(θ/2) I − i sin(θ/2) n·σ`, so `R_n(2π) = −I`: the same physical operation as I (global phase π), but not the same matrix.
+Two qubits: `|ψ⟩ = α|00⟩ + β|01⟩ + γ|10⟩ + δ|11⟩`, where a label `|q0 q1⟩` lists q0 first, so the basis index is `k = 2·q0 + q1` and q0 is the left tensor factor (a gate on q0 is `U ⊗ I`). Some toolkits, such as Qiskit, order qubits the other way round.
 The sphere is drawn in a right-handed frame (X × Y = Z), so S and T rotate anticlockwise when viewed from |0⟩. Arcs on the far hemisphere are dashed.
 
 ## Suggested next improvements
