@@ -13,6 +13,7 @@ A free, client-side, offline-capable-after-download **one- and two-qubit educati
 - 4×4 matrices, amplitudes α, β, γ, δ with exact forms such as 1/√2, and a probability histogram
 - Entanglement via the concurrence C = 2|αδ − βγ|, reduced density matrices ρ₀ = Tr₁ρ, ρ₁ = Tr₀ρ and their Bloch vectors
 - Guided preparation of the four Bell states and two-qubit experiments (Bell pair, superposition vs entanglement, SWAP, CZ)
+- Light and dark themes: the lab follows the operating-system preference on a first visit and remembers a manual choice
 - **Measurement lab** in both modes: live measurement with collapse (recorded in the circuit, undoable), a shot simulator (1 to 100,000 shots) comparing Born-rule probabilities with observed counts, frequencies and errors, a convergence demonstration, joint and partial (q0 or q1) measurement with conditional collapse, seeded reproducible runs, and a measurement history kept separate from Undo
 - Theta and phi state preparation controls
 - Live state amplitudes and measurement probabilities
@@ -66,6 +67,7 @@ They cover every gate and rotation matrix (unitarity, 2π = −I, exact preset a
 | `projection.js` | Right-handed camera projection for the Bloch sphere |
 | `sphere-view.js`, `circuit-view.js`, `inspector-view.js`, `rotation-panel.js`, `experiments-view.js`, `dom.js` | Views |
 | `app.js` | UI state and wiring |
+| `theme.js` | Light/dark theme: system preference, saved choice, header toggle (no quantum state) |
 | `scripts/serve.mjs` | Zero-dependency local development server (`npm run serve`) |
 | `test/` | `*.test.js` suites and shared helpers |
 

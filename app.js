@@ -15,6 +15,7 @@ import {el, math, matrixNode, vectorText, subscript} from './dom.js';
 import {createTwoQubitMode} from './two-qubit-app.js';
 import {createMeasurementLab} from './measurement-view.js';
 import {createHistoryStore} from './measurement-history.js';
+import {initTheme, THEME_EVENT} from './theme.js';
 
 const $ = (id) => document.getElementById(id);
 const GATES = Object.keys(gateInfo);
@@ -308,6 +309,10 @@ function setMode(mode) {
   }
   try { history.replaceState(null, '', two ? '#two-qubits' : location.pathname + location.search); } catch { /* file:// or sandboxed */ }
 }
+// Theme: purely visual. Toggling only redraws the canvases with the new colours; no state is touched.
+initTheme();
+document.addEventListener(THEME_EVENT, () => draw());
+
 $('modeSingle').addEventListener('change', () => setMode('single'));
 $('modeTwo').addEventListener('change', () => setMode('two'));
 if (location.hash === '#two-qubits') setMode('two');
